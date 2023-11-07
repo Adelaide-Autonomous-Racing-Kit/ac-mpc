@@ -1,0 +1,74 @@
+experiment_name: 'refactor-test'
+save_path: "data/testing"
+evaluation: True
+multithreading: True
+test: False
+seed: 0
+vehicle:
+    wheel_base: 2.898
+    width: 2.5
+debugging:
+    birds_eye_view_scale: 4
+    birds_eye_view_size: 200
+    show_camera: True
+    show_control_image: True
+    show_localisation_map: False
+    show_segmentation: True
+    show_visualised_predictions: True
+    verbose: True
+data_collection:
+    collect_images: 0
+perception:
+    model_segmentation: True
+    model_path: "agent/models/checkpoints/deeplab-resnet18-OS8-monza-2.ckpt"
+    single_cam: True
+    image_width: 1280
+    image_height: 736
+    centerline_from_tack_limits: False
+    vertical_fov: 60
+mapping:
+    map_path: agents/utils/our_racetracks/anglesly2
+    create_map: False
+    number_of_mapping_laps: 1
+    speed_profile_constraints:
+        v_min: 0.0
+        v_max: 10.0 
+        a_min: -8.0
+        a_max: 6.0
+        ay_max: 2.0
+localisation:
+    use_localisation: False
+    n_particles: 500
+    n_converged_particles: 500
+    sampling_noise:
+        x: 1.0
+        y: 1.0
+        yaw: 1.0 # deg
+    control_noise:
+        velocity: 0.1
+        yaw:  1.0 # deg
+    thresholds:
+        offset: 10
+        rotation: 90 # deg
+        minimum_particles: 20
+        track_limit: 1.0e6
+    score_distribution:
+        mean: 0
+        sigma: 10
+    convergence_criteria:
+        maximum_distance: 30
+        maximum_angle: 90 # deg
+control:
+    horizon: 50
+    speed_profile_constraints:
+        v_min: 0.0
+        v_max: 2.0
+        a_min: -1.0
+        a_max: 6.0
+        ay_max: 1.5
+    input_constraints:
+        steering_max: 0.3
+    wheel_base: 2.898
+    step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
+    r_term: [1.0e-6, 10.0] # velocity, steering
+    final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t
