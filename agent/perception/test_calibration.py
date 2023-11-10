@@ -7,7 +7,7 @@ import cv2
 from utils import CameraInfo, DUMMY_GROUND_POINTS
 
 CAMERA_CONFIG = {
-    "image_width": 540,
+    "image_width": 1080,
     "image_height": 540,
     "position": [0.000102, 2.099975, 0.7],
     # "position": [200, 400, 0.7],
@@ -41,7 +41,7 @@ IMAGE_OF_ROAD = np.zeros([CAMERA_CONFIG["image_height"], CAMERA_CONFIG["image_wi
 
 track_points = 100
 start = 0
-finish = 20
+finish = 100
 width = 10
 left_track_wcf = np.array([np.ones(track_points) * -width/2, np.linspace(start, finish, track_points), np.ones(track_points)])
 right_track_wcf = np.array([np.ones(track_points) * width/2, np.linspace(start, finish, track_points), np.ones(track_points)])
@@ -54,7 +54,7 @@ IMAGE_POINTS = []
 
 def test_homography_projection():
 
-    camera_config = copy.copy(CAMERA_CONFIG)
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
     camera_info = CameraInfo(camera_config)
 
     homography_w2i = np.linalg.inv(camera_info.homography_i2w)
@@ -63,15 +63,71 @@ def test_homography_projection():
 
     draw_tracks_on_image("original", left_track_image, right_track_image)
 
-    camera_config = copy.copy(CAMERA_CONFIG)
-    camera_config["rotation_deg"][2] += 45
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
+    rotation_amount = -20
+    camera_config["rotation_deg"][2] += rotation_amount
     camera_info = CameraInfo(camera_config)
 
     homography_w2i = np.linalg.inv(camera_info.homography_i2w)
     left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
     right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
 
-    draw_tracks_on_image("pan rotation by 45 deg", left_track_image, right_track_image)
+    draw_tracks_on_image(f"pan rotation by {rotation_amount} deg", left_track_image, right_track_image)
+
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
+    rotation_amount = 20
+    camera_config["rotation_deg"][2] += rotation_amount
+    camera_info = CameraInfo(camera_config)
+
+    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
+    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
+    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
+
+    draw_tracks_on_image(f"pan rotation by {rotation_amount} deg", left_track_image, right_track_image)
+
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
+    rotation_amount = -10
+    camera_config["rotation_deg"][1] += rotation_amount
+    camera_info = CameraInfo(camera_config)
+
+    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
+    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
+    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
+
+    draw_tracks_on_image(f"roll rotation by {rotation_amount} deg", left_track_image, right_track_image)
+
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
+    rotation_amount = 10
+    camera_config["rotation_deg"][1] += rotation_amount
+    camera_info = CameraInfo(camera_config)
+
+    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
+    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
+    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
+
+    draw_tracks_on_image(f"roll rotation by {rotation_amount} deg", left_track_image, right_track_image)
+
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
+    rotation_amount = 10
+    camera_config["rotation_deg"][0] += rotation_amount
+    camera_info = CameraInfo(camera_config)
+
+    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
+    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
+    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
+
+    draw_tracks_on_image(f"tilt rotation by {rotation_amount} deg", left_track_image, right_track_image)
+
+    camera_config = copy.deepcopy(CAMERA_CONFIG)
+    rotation_amount = -10
+    camera_config["rotation_deg"][0] += rotation_amount
+    camera_info = CameraInfo(camera_config)
+
+    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
+    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
+    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
+
+    draw_tracks_on_image(f"tilt rotation by {rotation_amount} deg", left_track_image, right_track_image)
 
     cv2.waitKey(0)
 
@@ -145,11 +201,17 @@ def test_image_to_ground_projection():
     image_points = camera_info._get_corresponding_image_point(DUMMY_GROUND_POINTS)
 
     projected_ground_points = np.matmul(camera_info.homography_i2w, image_points.T)
-    projected_ground_points /= projected_ground_points[2]
+    projected_ground_points =projected_ground_points[:2] / projected_ground_points[2]
+    projected_ground_points = projected_ground_points.T
 
-    assert np.all(np.isclose(projected_ground_points, DUMMY_GROUND_POINTS)), "Homography "
+    print(projected_ground_points)
+    print(DUMMY_GROUND_POINTS)
+
+    assert np.all(np.isclose(projected_ground_points, DUMMY_GROUND_POINTS[:, :2])), "Homography "
 
 
 if __name__ == "__main__":
     # test_default_rotation()
+
+    test_image_to_ground_projection()
     test_homography_projection()
