@@ -20,12 +20,15 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "agent/models/checkpoints/deeplab-resnet18-OS8-monza-2.ckpt"
+    # model_path: "agent/models/checkpoints/deeplab-resnet18-OS8-monza-2.ckpt"
+    model_path: "agent/models/checkpoints/fpn-resnet-18-v2.ckpt"
     single_cam: True
     image_width: 1280
     image_height: 736
     centerline_from_tack_limits: False
-    vertical_fov: 60
+    vertical_fov_deg: 60
+    position: [0.000102, 2.099975, 0.7]
+    rotation_deg: [90.0, 0.0, 0.0]
 mapping:
     map_path: agents/utils/our_racetracks/anglesly2
     create_map: False

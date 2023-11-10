@@ -168,7 +168,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         brake = acceleration_command if acceleration_command < 0 else 0.0
         throttle = acceleration_command if acceleration_command > 0 else 0.0
         throttle = np.clip(throttle, 0.0, 0.40)
-        throttle = 0.0
+        # throttle = 0.0
         with self.update_command_index_lock:
             if self.command_index < 49:
                 self.command_index += 1

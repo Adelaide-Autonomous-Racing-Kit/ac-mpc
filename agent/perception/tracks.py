@@ -19,14 +19,14 @@ class TrackLimitPerception:
         self.test = test
         self.use_interpolated_centreline = cfg["centerline_from_tack_limits"]
         self.image_width = cfg["image_width"]
-        self.image_height = cfg["image_height"]
-        self.vertical_fov = cfg["vertical_fov"]
         self.remove_bottom = 600
         self.birds_eye_view_dimension = 200  # m each length to form a square
         self.bev_scale = 4
-        self.homography = utils.get_camera_homography(
-            [self.image_height, self.image_width], self.vertical_fov,
-        )
+        self.camera = utils.CameraInfo(cfg)
+        self.homography = {"CameraFront":self.camera.homography_i2w}
+        #self.homography = utils.get_camera_homography(
+        #    [self.image_height, self.image_width], self.vertical_fov,
+        #)
 
     @track_runtime
     def extract_track_from_observations(self, obs: Dict):

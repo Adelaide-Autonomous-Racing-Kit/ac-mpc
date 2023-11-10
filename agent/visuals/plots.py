@@ -64,7 +64,7 @@ def draw_control_map(agent, canvas: np.array, obs: Dict) -> np.array:
         )
         logger.info("Left track In plot")
         utils.draw_track_lines_on_bev(
-            canvas, 4, [agent.left_track_detections], colour=(255, 255, 255)
+            canvas, 4, [agent.left_track_detections], colour=(255, 0, 0)
         )
         x, y = agent.MPC.current_prediction
         utils.draw_track_lines_on_bev(

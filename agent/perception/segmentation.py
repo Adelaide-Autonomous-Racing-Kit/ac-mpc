@@ -52,9 +52,10 @@ class TrackSegmenter:
         #    version="efficientnet_v2_s", im_c=3, n_classes=2
         # ).to(self.device)
 
-        encoder = resnet.ResnetEncoder(resnet.build("18", False), 16)
-        model = deeplabv3plus.DeepLabV3plus(encoder, 10).to(self.device)
-        # model = smp.FPN(encoder_name="resnet18", weights=None, classes=10)
+        #encoder = resnet.ResnetEncoder(resnet.build("18", False), 16)
+        #model = deeplabv3plus.DeepLabV3plus(encoder, 10).to(self.device)
+        
+        model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10).to(self.device)
         modified_state_dict = {}
         state_dict = torch.load(path)["state_dict"]
         for key in state_dict.keys():
