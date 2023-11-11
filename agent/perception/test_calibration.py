@@ -1,217 +1,237 @@
 import copy
-
+import unittest
 
 import numpy as np
-import cv2
 
-from utils import CameraInfo, DUMMY_GROUND_POINTS
 
-CAMERA_CONFIG = {
-    "image_width": 1080,
-    "image_height": 540,
-    "position": [0.000102, 2.099975, 0.7],
-    # "position": [200, 400, 0.7],
-    "rotation_deg": [90.0, 0.0, 0.0],
-    "vertical_fov_deg":60
-}
+from utils import CameraInfo
 
-BEV_ROAD = np.zeros([400,400, 3], np.uint8)
-BEV_ROAD[:, 150:200] = (255,0,0)
-BEV_ROAD[:, 200:250] = (0, 0, 255)
 
-BEV_POINTS = np.array([
-    [150, 0, 1],
-    [250, 0, 1],
-    [150, 400, 1],
-    [200, 400, 1]
-])
+class TestCamera(unittest.TestCase):
+    def setUp(self):
+        self.homogeneous_wcf_points = np.array(
+            [[-5, 10, 1], [5, 10, 1], [-5, 50, 1], [5, 50, 1]]
+        ).T
 
-GROUND_POINTS = np.array([
-    [50, 400, 1],
-    [-50, 400, 1],
-    [50, 0, 1],
-    [0, 0, 1]
-])
+        self.camera_config = {
+            "image_width": 1080,
+            "image_height": 540,
+            "position": [0.0, 0.0, 1.0],
+            "pitch_deg": 0.0,
+            "vertical_fov_deg": 60,
+        }
 
-thickness = 2
-IMAGE_OF_ROAD = np.zeros([CAMERA_CONFIG["image_height"], CAMERA_CONFIG["image_width"], 3], np.uint8)
+    def test_focal_length_calculation(self):
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["image_height"] = 540
+        camera_config["image_width"] = 540
+        camera_config["vertical_fov_deg"] = 90
 
-# cv2.line(IMAGE_OF_ROAD, [0,CAMERA_CONFIG["image_height"]], [CAMERA_CONFIG["image_width"]//2-5, CAMERA_CONFIG["image_height"]//2], (255, 0, 0), thickness)
-# cv2.line(IMAGE_OF_ROAD, [CAMERA_CONFIG["image_width"], CAMERA_CONFIG["image_height"]], [CAMERA_CONFIG["image_width"]//2+5, CAMERA_CONFIG["image_height"]//2], (0, 0, 255), thickness)
+        camera_info = CameraInfo(camera_config)
 
-track_points = 100
-start = 0
-finish = 100
-width = 10
-left_track_wcf = np.array([np.ones(track_points) * -width/2, np.linspace(start, finish, track_points), np.ones(track_points)])
-right_track_wcf = np.array([np.ones(track_points) * width/2, np.linspace(start, finish, track_points), np.ones(track_points)])
+        self.assertAlmostEqual(camera_info.focal_length, camera_info.height / 2)
 
-IMAGE_POINTS = []
+    def test_camera_matrix_calculation(self):
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["image_height"] = 540
+        camera_config["image_width"] = 1080
+        camera_config["vertical_fov_deg"] = 90
 
-# def test_homography_consistency()
+        camera_info = CameraInfo(camera_config)
 
-# def test_overhead_camera_reprojection_calculations()
-
-def test_homography_projection():
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image("original", left_track_image, right_track_image)
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    rotation_amount = -20
-    camera_config["rotation_deg"][2] += rotation_amount
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image(f"pan rotation by {rotation_amount} deg", left_track_image, right_track_image)
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    rotation_amount = 20
-    camera_config["rotation_deg"][2] += rotation_amount
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image(f"pan rotation by {rotation_amount} deg", left_track_image, right_track_image)
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    rotation_amount = -10
-    camera_config["rotation_deg"][1] += rotation_amount
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image(f"roll rotation by {rotation_amount} deg", left_track_image, right_track_image)
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    rotation_amount = 10
-    camera_config["rotation_deg"][1] += rotation_amount
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image(f"roll rotation by {rotation_amount} deg", left_track_image, right_track_image)
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    rotation_amount = 10
-    camera_config["rotation_deg"][0] += rotation_amount
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image(f"tilt rotation by {rotation_amount} deg", left_track_image, right_track_image)
-
-    camera_config = copy.deepcopy(CAMERA_CONFIG)
-    rotation_amount = -10
-    camera_config["rotation_deg"][0] += rotation_amount
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-    left_track_image = transform_points_wcf_to_image(homography_w2i, left_track_wcf)
-    right_track_image = transform_points_wcf_to_image(homography_w2i, right_track_wcf)
-
-    draw_tracks_on_image(f"tilt rotation by {rotation_amount} deg", left_track_image, right_track_image)
-
-    cv2.waitKey(0)
-
-
-def transform_points_wcf_to_image(homography_w2i, wcf_points):
-    image_points = homography_w2i @ wcf_points
-    image_points = image_points[:2] / image_points[2]
-
-    x_mask = (image_points[0] > 0) & (image_points[0] < CAMERA_CONFIG["image_width"])
-    y_mask = (image_points[1] > 0) & (image_points[1] < CAMERA_CONFIG["image_height"])
-    mask = x_mask & y_mask
-
-    filtered_image_points = image_points[:, mask]
-
-    print(filtered_image_points)
-
-    return filtered_image_points
-
-def draw_tracks_on_image(window_name, left_track, right_track):
-    image_of_road = copy.copy(IMAGE_OF_ROAD)
-    cv2.polylines(image_of_road, [left_track.astype(np.int32).T], False, (255, 0, 0), thickness)
-    cv2.polylines(image_of_road, [right_track.astype(np.int32).T], False, (0,0,255), thickness)
-
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.imshow(window_name, image_of_road)
-
-
-
-def test_default_rotation():
-
-    print(BEV_POINTS - GROUND_POINTS)
-
-    camera_config = copy.copy(CAMERA_CONFIG)
-    # camera_config["rotation_deg"][0] = 0
-    camera_info = CameraInfo(camera_config)
-
-    homography_w2bev = cv2.findHomography(GROUND_POINTS, BEV_POINTS)[0]
-
-    print(homography_w2bev)
-
-    # homography_w2i = np.linalg.inv(camera_info.homography_i2w)
-
-    warped_wcf = cv2.warpPerspective(IMAGE_OF_ROAD, camera_info.homography_i2w , dsize=(400,400))
-    warped_BEV = cv2.warpPerspective(warped_wcf, homography_w2bev, dsize=(400,400))
-
-    homography_im2bev = homography_w2bev * camera_info.homography_i2w
-    single_transform = cv2.warpPerspective(IMAGE_OF_ROAD, homography_im2bev, dsize=(400,400))
-
-    cv2.namedWindow("warped_wcf", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("warped_bev", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("original", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("single_transform", cv2.WINDOW_NORMAL)
-    cv2.imshow("warped_wcf", warped_wcf)
-    cv2.imshow("original", IMAGE_OF_ROAD)
-    cv2.imshow("warped_bev", warped_BEV)
-    cv2.imshow("single_transform", single_transform)
-    cv2.waitKey(0)
-
-
-
-# def test_pitch_rotation():
-
-
-
-# def test_roll_rotation():
-
-
-
-def test_image_to_ground_projection():
-    camera_info = CameraInfo(CAMERA_CONFIG)
-    image_points = camera_info._get_corresponding_image_point(DUMMY_GROUND_POINTS)
-
-    projected_ground_points = np.matmul(camera_info.homography_i2w, image_points.T)
-    projected_ground_points =projected_ground_points[:2] / projected_ground_points[2]
-    projected_ground_points = projected_ground_points.T
-
-    print(projected_ground_points)
-    print(DUMMY_GROUND_POINTS)
-
-    assert np.all(np.isclose(projected_ground_points, DUMMY_GROUND_POINTS[:, :2])), "Homography "
+        expected_camera_matrix = np.array([[270, 0, 540], [0, 270, 270], [0, 0, 1]])
+
+        self.assertTrue(
+            np.all(np.isclose(camera_info.camera_matrix, expected_camera_matrix))
+        )
+
+    def test_rotation_matrices(self):
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["pitch_deg"] = 0.0
+        camera_info = CameraInfo(camera_config)
+
+        expected_rotation_matrix = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
+
+        self.assertTrue(
+            np.all(np.isclose(camera_info.rotation_matrix, expected_rotation_matrix)),
+            "no pitch rotation failed",
+        )
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["pitch_deg"] = 10.0
+        camera_info = CameraInfo(camera_config)
+
+        expected_rotation_matrix = np.array(
+            [[1, 0, 0], [0, -0.173648, -0.984808], [0, 0.984808, -0.173648]]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(camera_info.rotation_matrix, expected_rotation_matrix)),
+            "positive pitch rotation failed",
+        )
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["pitch_deg"] = -10.0
+        camera_info = CameraInfo(camera_config)
+
+        expected_rotation_matrix = np.array(
+            [[1, 0, 0], [0, 0.173648, -0.984808], [0, 0.984808, 0.173648]]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(camera_info.rotation_matrix, expected_rotation_matrix)),
+            "negative pitch rotation failed",
+        )
+
+    def test_extrinsics(self):
+        world_coordinate_frame_points = np.array(
+            [[50, 400, 0], [-50, 400, 0], [50, 0, 0], [0, 0, 0]]
+        )
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["position"] = [0.0, 0.0, 1.0]
+        camera_info = CameraInfo(camera_config)
+
+        ccf_points = camera_info.translate_points_from_world_to_camera_frame(
+            world_coordinate_frame_points
+        )
+
+        expected_ccf_points = np.array(
+            [[50, 1.0, 400], [-50, 1.0, 400], [50, 1.0, 0], [0, 1.0, 0]]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(ccf_points, expected_ccf_points)),
+            "wcf to ccf rotation did not work",
+        )
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["position"] = [0.0, 2.0, 1.0]
+        camera_info = CameraInfo(camera_config)
+
+        ccf_points = camera_info.translate_points_from_world_to_camera_frame(
+            world_coordinate_frame_points
+        )
+
+        expected_ccf_points = np.array(
+            [[50, 1.0, 400 - 2], [-50, 1.0, 400 - 2], [50, 1.0, -2], [0, 1.0, -2]]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(ccf_points, expected_ccf_points)),
+            "wcf to ccf rotation",
+        )
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["position"] = [0.0, 0.0, 1.0]
+        camera_config["pitch_deg"] = 45.0
+        camera_info = CameraInfo(camera_config)
+
+        ccf_points = camera_info.translate_points_from_world_to_camera_frame(
+            world_coordinate_frame_points
+        )
+
+        z_diff = np.sin(45 * np.pi / 180) * 400
+        y_diff = np.sin(45 * np.pi / 180) * 1.0
+
+        expected_ccf_points = np.array(
+            [
+                [50, -z_diff + y_diff, z_diff + y_diff],
+                [-50, -z_diff + y_diff, z_diff + y_diff],
+                [50, y_diff, y_diff],
+                [0, y_diff, y_diff],
+            ]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(ccf_points, expected_ccf_points)),
+            "wcf to ccf rotation",
+        )
+
+    def test_intrinsics(self):
+        camera_points = np.array([[0, 0, 20], [2, 0, 1], [0, 1, 1], [2, 1, 1]]).T
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["vertical_fov_deg"] = 90
+        camera_config["image_width"] = 1000
+        camera_config["image_height"] = 500
+        camera_info = CameraInfo(camera_config)
+
+        image_points = camera_info.translate_points_from_camera_to_image_frame(
+            camera_points
+        )
+
+        expected_image_points = np.array(
+            [
+                [camera_info.width / 2, camera_info.height / 2],
+                [camera_info.width, camera_info.height / 2],
+                [camera_info.width / 2, camera_info.height],
+                [camera_info.width, camera_info.height],
+            ]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(image_points, expected_image_points)),
+            "camera coordinate frame to image translation is wrong",
+        )
+
+    def test_world_to_image_point_conversions(self):
+        world_points = np.array([[0, 1, 1], [2, 1, 1], [0, 1, 0], [2, 1, 0]])
+
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["vertical_fov_deg"] = 90
+        camera_config["image_width"] = 1000
+        camera_config["image_height"] = 500
+        camera_info = CameraInfo(camera_config)
+
+        image_points = camera_info.translate_points_from_world_to_image_frame(
+            world_points
+        )
+
+        expected_image_points = np.array(
+            [
+                [camera_info.width / 2, camera_info.height / 2],
+                [camera_info.width, camera_info.height / 2],
+                [camera_info.width / 2, camera_info.height],
+                [camera_info.width, camera_info.height],
+            ]
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(image_points, expected_image_points)),
+            f"world coordinate frame to image translation is wrong \n Expected\n {expected_image_points} \n Calculated\n {image_points}",
+        )
+
+        world_points_on_the_ground = np.array(
+            [[-10, 400, 0], [10, 400, 0], [-10, 40, 0], [10, 40, 0]]
+        )
+        camera_config = copy.deepcopy(self.camera_config)
+        camera_config["vertical_fov_deg"] = 90
+        camera_config["image_width"] = 1000
+        camera_config["image_height"] = 500
+        camera_info = CameraInfo(camera_config)
+
+        image_points_homo = camera_info.translate_points_from_ground_to_image_plane(
+            world_points_on_the_ground[:, :2]
+        )
+        image_points = camera_info.translate_points_from_world_to_image_frame(
+            world_points_on_the_ground
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(image_points_homo, image_points)),
+            f"Homography projection to the image plane is not the same as using extrinsics",
+        )
+
+        ground_points_homo = camera_info.translate_points_from_image_to_ground_plane(
+            image_points_homo
+        )
+
+        self.assertTrue(
+            np.all(np.isclose(ground_points_homo, world_points_on_the_ground[:, :2])),
+            f"Homography projection to the ground plane is not the same as the inverse",
+        )
 
 
 if __name__ == "__main__":
-    # test_default_rotation()
-
-    test_image_to_ground_projection()
-    test_homography_projection()
+    unittest.main()

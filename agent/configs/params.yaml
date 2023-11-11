@@ -28,7 +28,7 @@ perception:
     centerline_from_tack_limits: False
     vertical_fov_deg: 60
     position: [0.000102, 2.099975, 0.7]
-    rotation_deg: [90.0, 0.0, 0.0]
+    pitch_deg: 0.0
 mapping:
     map_path: agents/utils/our_racetracks/anglesly2
     create_map: False
