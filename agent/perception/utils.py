@@ -72,20 +72,17 @@ class CameraInfo:
     def translate_points_from_world_to_camera_frame(self, world_points):
         world_points = self.make_homogeneous(world_points).T
         camera_frame_points = self.extrinsic_calibration @ world_points
-
         return camera_frame_points.T
 
     def translate_points_from_camera_to_image_frame(self, camera_points):
         camera_points = np.matmul(self.camera_matrix, camera_points)
         camera_points = camera_points[:2] / camera_points[2]
-
         return camera_points.T
 
     def translate_points_from_world_to_image_frame(self, world_points):
         world_points = self.make_homogeneous(world_points).T
         image_points = self.full_camera_transformation_matrix @ world_points
         image_points = image_points[:2] / image_points[2]
-
         return image_points.T
 
     def translate_points_from_ground_to_image_plane(self, ground_points):
@@ -104,17 +101,15 @@ class CameraInfo:
     def make_homogeneous(points):
         number_of_points = points.shape[0]
         homogeneous_points = np.hstack([points, np.ones((number_of_points, 1))])
-
         return homogeneous_points
 
 
 def smooth_track_with_polyfit(track, num_points, degree=3):
-    if len(track[:, 0]) == 0:
+    if len(track) == 0:
         xnew = np.linspace(0, 0.1, num_points)
         ynew = np.linspace(0, 2, num_points)
         return np.array([xnew, ynew]).T
     ynew = np.linspace(0, np.max(track[:, 1]), num_points)
-    logger.info(f"{track}")
     coeffs = np.polyfit(track[:, 1], track[:, 0], degree)
     xnew = np.polyval(coeffs, ynew)
     return np.array([xnew, ynew]).T

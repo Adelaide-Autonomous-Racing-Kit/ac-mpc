@@ -58,4 +58,4 @@ class Perceiver:
 
     def add_track_limits(self, obs: Dict):
         output = self.track_limit_exctractor.extract_track_from_observations(obs)
-        obs["original_centre_track"], obs["tracks"] = output
+        obs["tracks"] = output

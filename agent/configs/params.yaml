@@ -1,7 +1,7 @@
 experiment_name: 'refactor-test'
 save_path: "data/testing"
 evaluation: True
-multithreading: True
+multithreading: False
 test: False
 seed: 0
 vehicle:
@@ -27,8 +27,8 @@ perception:
     image_height: 736
     centerline_from_tack_limits: False
     vertical_fov_deg: 60
-    position: [0.000102, 2.099975, 0.7]
-    pitch_deg: 0.0
+    position: [0.0, 1.45000, 0.56000]
+    pitch_deg: 2.889419
 mapping:
     map_path: agents/utils/our_racetracks/anglesly2
     create_map: False
@@ -64,14 +64,14 @@ localisation:
 control:
     horizon: 50
     speed_profile_constraints:
-        v_min: 0.0
-        v_max: 2.0
+        v_min: 5.0
+        v_max: 17
         a_min: -1.0
         a_max: 6.0
         ay_max: 1.5
     input_constraints:
         steering_max: 0.3
     wheel_base: 2.898
-    step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
+    step_cost: [1.0e-1, 0.0, 0.0] # e_y, e_psi, t
     r_term: [1.0e-6, 10.0] # velocity, steering
     final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t

@@ -60,17 +60,14 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def centre_track_detections(self) -> np.array:
-        logger.info(f"Centre Track {self.tracks['centre']}")
         return self.tracks["centre"]
 
     @property
     def left_track_detections(self) -> np.array:
-        logger.info(f"Left Track {self.tracks['left']}")
         return self.tracks["left"]
 
     @property
     def right_track_detections(self) -> np.array:
-        logger.info(f"Right Track {self.tracks['right']}")
         return self.tracks["right"]
 
     @property
@@ -92,11 +89,19 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def desired_velocity(self) -> float:
-        return np.mean(self.MPC.projected_control[0, self.command_index])
+        max_velocity = self.cfg["control"]["speed_profile_constraints"]["v_max"]
+        min_velocity = self.cfg["control"]["speed_profile_constraints"]["v_min"]
+        control_velocity = np.mean(self.MPC.projected_control[0, self.command_index])
+        return np.clip(control_velocity, min_velocity, max_velocity)
 
     @property
     def acceleration(self) -> float:
-        return np.clip((self.desired_velocity - self.pose["velocity"]) / 4, -16, 6)
+        max_deceleration = self.cfg["control"]["speed_profile_constraints"]["a_min"]
+        max_acceleration = self.cfg["control"]["speed_profile_constraints"]["a_max"]
+        logger.info(f"Pose velocity: {self.pose['velocity']:.2f}")
+        target = (self.desired_velocity - self.pose["velocity"]) / 4
+        logger.info(f"Target acceleration: {target:.2f}")
+        return np.clip(target, max_deceleration, max_acceleration)
 
     @property
     def acceleration_command(self) -> float:
@@ -109,7 +114,8 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def steering_command(self) -> float:
-        return np.clip(self.steering_angle / 0.3, -1, 1)
+        max_steering_angle = self.cfg["control"]["input_constraints"]["steering_max"]
+        return np.clip(self.steering_angle / max_steering_angle, -1, 1)
 
     @property
     def control_command(self) -> tuple:
@@ -125,7 +131,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             [
                 self.centre_track_detections[0::ds, 0],
                 self.centre_track_detections[0::ds, 1],
-                np.linspace(5.0, 3.0, self.MPC.MPC_horizon),
+                np.linspace(20.0, 3.0, self.MPC.MPC_horizon),
             ]
         ).T
         return reference_path
@@ -162,6 +168,9 @@ class ElTuarMPC(AssettoCorsaInterface):
             + state["velocity_y"] ** 2
             + state["velocity_z"] ** 2
         )
+
+        logger.info(f'Speed km/h: {obs["state"]["speed_kmh"]}')
+        logger.info(f"Speed calculated: {speed}")
         System_Monitor.log_select_action(speed)
 
         acceleration_command = np.clip(self.acceleration_command, -1.0, 1.0)
@@ -173,7 +182,8 @@ class ElTuarMPC(AssettoCorsaInterface):
             if self.command_index < 49:
                 self.command_index += 1
         # return np.array([0, 0, 0])
-        return np.array([-1*self.steering_command, brake, throttle])
+        # logger.info([-1.0 * self.steering_command, brake, throttle])
+        return np.array([-1.0 * self.steering_command, brake, throttle])
 
     def maybe_update_control(self, obs):
         if not self.update_control_lock.locked():
@@ -206,7 +216,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.dt = self.current_time - self.previous_time
         self.pose["velocity"] = obs["speed"]
         self.tracks = obs["tracks"]
-        self.original_centre_track = obs["original_centre_track"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         if not self.mapper.map_built:
@@ -234,7 +243,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def update_reference_speed(self):
         self.MPC.SpeedProfileConstraints["v_max"] = self.reference_speed
         reference_speed = self.MPC.SpeedProfileConstraints["v_max"]
-        logger.info(f"Using Reference speed {reference_speed:.2f}")
+        # logger.info(f"Using Reference speed {reference_speed:.2f}")
 
     def maybe_reset_command_index(self):
         if self.MPC.infeasibility_counter == 0:
