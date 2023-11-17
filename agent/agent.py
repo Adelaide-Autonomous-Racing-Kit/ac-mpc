@@ -1,7 +1,7 @@
 import pathlib
 import threading
 import time
-from typing import Dict
+from typing import Dict, List
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -42,6 +42,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.seed_packages()
 
     def setup_state(self):
+        self.last_update_timestamp = 0
         self.command_index = 0
         self.pose = {"velocity": 0}
         self.previous_steering_command = 0
@@ -144,6 +145,10 @@ class ElTuarMPC(AssettoCorsaInterface):
             reference_speed = self.reference_speeds[centre_index]
         return reference_speed
 
+    @property
+    def control_intervals(self) -> List[float]:
+        return self.MPC.cum_time
+
     def behaviour(self, observation: Dict) -> np.array:
         return self.select_action(observation)
 
@@ -179,6 +184,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         throttle = np.clip(throttle, 0.0, 0.40)
         # throttle = 0.0
         with self.update_command_index_lock:
+            time_since_update = time.time() - self.last_update_timestamp
+            logger.info(f"Time since update: {time_since_update}")
+            logger.info(f"Times: {self.control_intervals}")
             if self.command_index < 49:
                 self.command_index += 1
         # return np.array([0, 0, 0])
@@ -249,6 +257,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.MPC.infeasibility_counter == 0:
             with self.update_command_index_lock:
                 self.command_index = 0
+                self.last_update_timestamp = time.time()
 
     @track_runtime
     def _step(self, obs):

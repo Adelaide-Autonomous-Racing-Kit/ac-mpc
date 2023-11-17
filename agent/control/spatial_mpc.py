@@ -35,6 +35,7 @@ class SpatialMPC:
         self.Q = Q  # weight matrix state vector
         self.R = R  # weight matrix input vector
         self.QN = QN  # weight matrix terminal
+        self.cum_time = []
 
         # Model
         self.model = model
@@ -97,7 +98,6 @@ class SpatialMPC:
 
         # Iterate over horizon
         for i in range(N):
-
             # Get information about current waypoint
             current_waypoint = reference_path[i]
             # distance between waypoints
@@ -157,7 +157,6 @@ class SpatialMPC:
 
         # Iterate over all waypoints
         for wp_id in range(len(waypoint_coordinates) - 1):
-
             # Get start and goal waypoints
             current_wp = np.array(waypoint_coordinates[wp_id])[:-1]
             next_wp = np.array(waypoint_coordinates[wp_id + 1])[:-1]
@@ -218,7 +217,9 @@ class SpatialMPC:
             # Get associated waypoint
             associated_waypoint = reference_path[n]
             # Transform predicted spatial state to temporal state
-            predicted_temporal_state = self.model.s2t(associated_waypoint, spatial_state_prediction[n, :])
+            predicted_temporal_state = self.model.s2t(
+                associated_waypoint, spatial_state_prediction[n, :]
+            )
 
             # Save predicted coordinates in world coordinate frame
             x_pred.append(predicted_temporal_state[0])
@@ -253,11 +254,13 @@ class SpatialMPC:
         umax_dyn = np.kron(np.ones(self.N), umax)
         # umax_dyn[:2] = 0
         # Get curvature predictions from previous control signals
-        kappa_pred = np.tan(np.array(self.current_control[3::] + self.current_control[-1:])) / self.model.length
+        kappa_pred = (
+            np.tan(np.array(self.current_control[3::] + self.current_control[-1:]))
+            / self.model.length
+        )
 
         # Iterate over horizon
         for n in range(self.N):
-
             # Get information about current waypoint
             current_waypoint = reference_path[n]
             delta_s = current_waypoint["dist_ahead"]
@@ -266,21 +269,33 @@ class SpatialMPC:
 
             # Compute LTV matrices
             f, A_lin, B_lin = self.model.linearize(v_ref, kappa_ref, delta_s)
-            A[(n + 1) * self.nx : (n + 2) * self.nx, n * self.nx : (n + 1) * self.nx] = A_lin
-            B[(n + 1) * self.nx : (n + 2) * self.nx, n * self.nu : (n + 1) * self.nu] = B_lin
+            A[
+                (n + 1) * self.nx : (n + 2) * self.nx, n * self.nx : (n + 1) * self.nx
+            ] = A_lin
+            B[
+                (n + 1) * self.nx : (n + 2) * self.nx, n * self.nu : (n + 1) * self.nu
+            ] = B_lin
 
             # Set reference for input signal
             ur[n * self.nu : (n + 1) * self.nu] = np.array([v_ref, kappa_ref])
             # Compute equality constraint offset (B*ur)
-            uq[n * self.nx : (n + 1) * self.nx] = B_lin.dot(np.array([v_ref, kappa_ref])) - f
+            uq[n * self.nx : (n + 1) * self.nx] = (
+                B_lin.dot(np.array([v_ref, kappa_ref])) - f
+            )
 
             # Constrain maximum speed based on predicted car curvature
             vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred[n]) + 1e-12))
             if vmax_dyn < umax_dyn[self.nu * n]:
                 umax_dyn[self.nu * n] = vmax_dyn
 
-        ub = np.array([reference_path[i]["width"] / 2 for i in range(self.N)]) - self.model.safety_margin
-        lb = np.array([-reference_path[i]["width"] / 2 for i in range(self.N)]) + self.model.safety_margin
+        ub = (
+            np.array([reference_path[i]["width"] / 2 for i in range(self.N)])
+            - self.model.safety_margin
+        )
+        lb = (
+            np.array([-reference_path[i]["width"] / 2 for i in range(self.N)])
+            + self.model.safety_margin
+        )
         xmin_dyn[0] = spatial_state[0]
         xmax_dyn[0] = spatial_state[0]
         xmin_dyn[self.nx :: self.nx] = lb
@@ -290,7 +305,9 @@ class SpatialMPC:
         xr[self.nx :: self.nx] = (lb + ub) / 2
 
         # Get equality matrix
-        Ax = sparse.kron(sparse.eye(self.N + 1), -sparse.eye(self.nx)) + sparse.csc_matrix(A)
+        Ax = sparse.kron(
+            sparse.eye(self.N + 1), -sparse.eye(self.nx)
+        ) + sparse.csc_matrix(A)
         Bu = sparse.csc_matrix(B)
         Aeq = sparse.hstack([Ax, Bu])
         # Get inequality matrix
@@ -336,7 +353,9 @@ class SpatialMPC:
         finite time optimization problem based on the linearized car model.
         """
         self.reference_path = self.construct_waypoints(reference_path)
-        self.reference_path = self.compute_speed_profile(self.reference_path, end_vel=10.0)
+        self.reference_path = self.compute_speed_profile(
+            self.reference_path, end_vel=10.0
+        )
 
         # Number of state variables
         nx = self.model.n_states
@@ -346,7 +365,9 @@ class SpatialMPC:
         state = np.array([offset, 0, np.pi / 2])
 
         # Update spatial state
-        spatial_state = self.model.t2s(reference_state=state, reference_waypoint=self.reference_path[0])
+        spatial_state = self.model.t2s(
+            reference_state=state, reference_waypoint=self.reference_path[0]
+        )
 
         # Initialize optimization problem
         self._init_problem(spatial_state, self.reference_path)
@@ -375,9 +396,10 @@ class SpatialMPC:
             self.current_prediction = self.update_prediction(x, self.reference_path)
 
             self.times = np.diff(x[:, 2])
+            self.cum_time = np.cumsum(self.times)
 
-            self.accelerations = np.diff(x[:, 0]) / np.diff(x[:, 2])
-            self.steer_rates = np.diff(x[:, 1]) / np.diff(x[:, 2])
+            self.accelerations = np.diff(x[:, 0]) / self.times
+            self.steer_rates = np.diff(x[:, 1]) / self.times
 
             # Get current control signal
             u = np.array([v, delta])
@@ -386,9 +408,10 @@ class SpatialMPC:
             self.infeasibility_counter = 0
 
         else:
-
             message = "Infeasible problem. Previous control signal used!\n"
-            failed_reference_path = np.array([[val["x"], val["y"]] for i, val in enumerate(self.reference_path)])
+            failed_reference_path = np.array(
+                [[val["x"], val["y"]] for i, val in enumerate(self.reference_path)]
+            )
             logger.warning(message + f"{failed_reference_path}")
             id = nu * (self.infeasibility_counter + 1)
             u = np.array(self.current_control[id : id + 2])
