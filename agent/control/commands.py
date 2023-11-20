@@ -1,7 +1,6 @@
 from typing import List
 
 import numpy as np
-from loguru import logger
 
 
 class TemporalCommandInterpolator:
@@ -9,30 +8,33 @@ class TemporalCommandInterpolator:
         self._cum_time = np.array([])
         self._commands = np.array([])
 
-    def _get_closet_command_index(self, elapsed_time: float) -> int:
-        distances = self._calculate_temporal_distances(elapsed_time)
-        index = np.argmin(abs(distances))
-        logger.info(f"{distances}")
-        logger.info(f"{index}")
-        return index, distances[index]
-
-    def _calculate_temporal_distances(self, elapsed_time: float) -> np.array:
-        return self._cum_time - elapsed_time
-
     def get_command(self, elapsed_time: float) -> np.array:
         index_a, index_b = self._get_indices_of_commands_to_interpolate(elapsed_time)
         return self._interpolate_command(index_a, index_b, elapsed_time)
 
     def _get_indices_of_commands_to_interpolate(self, elapsed_time: float) -> List[int]:
         index_a, distance = self._get_closet_command_index(elapsed_time)
-        if index_a == 0 or index_a == (len(self._commands) - 1):
+        if self._is_start_or_end_index(index_a):
             index_b = index_a
-            return index_a, index_b
-        if distance < 0:
+        elif self._is_closest_command_in_the_past(distance):
             index_b = index_a + 1
         else:
             index_b = index_a - 1
         return index_a, index_b
+
+    def _get_closet_command_index(self, elapsed_time: float) -> int:
+        distances = self._calculate_temporal_distances(elapsed_time)
+        index = np.argmin(abs(distances))
+        return index, distances[index]
+
+    def _calculate_temporal_distances(self, elapsed_time: float) -> np.array:
+        return self._cum_time - elapsed_time
+
+    def _is_start_or_end_index(self, index: int) -> bool:
+        return index == 0 or index == (len(self._commands) - 1)
+
+    def _is_closest_command_in_the_past(self, distance: int) -> bool:
+        return distance < 0
 
     def _interpolate_command(
         self,
