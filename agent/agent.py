@@ -11,6 +11,7 @@ from scipy.signal import savgol_filter
 from src.interface import AssettoCorsaInterface
 
 from control.controller import build_mpc
+from control.commands import TemporalCommandInterpolator
 from localisation.localisation import LocaliseOnTrack
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
@@ -30,6 +31,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
         self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])
         self.MPC = build_mpc(self.cfg["control"], self.cfg["vehicle"])
+        self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
         # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
         self.visualiser = Visualiser(self.cfg["debugging"], self)
@@ -42,9 +44,10 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.seed_packages()
 
     def setup_state(self):
-        self.last_update_timestamp = 0
-        self.command_index = 0
+        self.last_update_timestamp = time.time()
         self.pose = {"velocity": 0}
+        self.steering_command = 0
+        self.acceleration_command = 0
         self.previous_steering_command = 0
         self.previous_acceleration_command = 0
         self.current_time = time.time()
@@ -52,7 +55,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def setup_threading(self):
         self.executor = ThreadPoolExecutor(max_workers=8)
         self.update_control_lock = threading.Lock()
-        self.update_command_index_lock = threading.Lock()
+        self.last_update_timestamp_lock = threading.Lock()
         self.thread_exception = None
 
     def seed_packages(self):
@@ -83,40 +86,44 @@ class ElTuarMPC(AssettoCorsaInterface):
             else self.previous_acceleration_command * 6
         )
         return acceleration
-
+    
     @property
-    def steering_angle(self) -> float:
-        return np.mean(self.MPC.projected_control[1, self.command_index])
-
-    @property
-    def desired_velocity(self) -> float:
+    def control_input(self) -> np.array:
+        with self.last_update_timestamp_lock:
+            time_since_update = time.time() - self.last_update_timestamp
+        desired_velocity, desired_yaw = self.command_interpolator(time_since_update)
+        desired_velocity = self._process_velocity(desired_velocity)
+        steering_angle = self._process_yaw(desired_yaw)
+        raw_acceleration = self._calculate_acceleration(desired_velocity)
+        throttle, brake = self._calculate_acceleration_command(raw_acceleration)
+        return np.array([steering_angle, brake, throttle])
+    
+    def _process_velocity(self, velocity: float) -> float:
         max_velocity = self.cfg["control"]["speed_profile_constraints"]["v_max"]
         min_velocity = self.cfg["control"]["speed_profile_constraints"]["v_min"]
-        control_velocity = np.mean(self.MPC.projected_control[0, self.command_index])
-        return np.clip(control_velocity, min_velocity, max_velocity)
+        return np.clip(velocity, min_velocity, max_velocity)
+    
+    def _process_yaw(self, yaw: float) -> float:
+        max_steering_angle = self.cfg["control"]["input_constraints"]["steering_max"]
+        steering_angle = np.clip(yaw / max_steering_angle, -1, 1)
+        self.steering_command = steering_angle
+        return -1.0 * steering_angle
 
-    @property
-    def acceleration(self) -> float:
+    def _calculate_acceleration(self, desired_velocity: float) -> float:
         max_deceleration = self.cfg["control"]["speed_profile_constraints"]["a_min"]
         max_acceleration = self.cfg["control"]["speed_profile_constraints"]["a_max"]
-        logger.info(f"Pose velocity: {self.pose['velocity']:.2f}")
-        target = (self.desired_velocity - self.pose["velocity"]) / 4
-        logger.info(f"Target acceleration: {target:.2f}")
+        target = (desired_velocity - self.pose["velocity"]) / 4
         return np.clip(target, max_deceleration, max_acceleration)
+    
+    def _calculate_acceleration_command(self, acceleration: float) -> List[float]:
+        acceleration = np.clip(acceleration, -1.0, 1.0)
+        self.acceleration_command = acceleration
+        brake = acceleration if acceleration < 0 else 0.0
+        throttle = acceleration if acceleration > 0 else 0.0
+        throttle = np.clip(throttle, 0.0, 0.40)
+        return throttle, brake
 
-    @property
-    def acceleration_command(self) -> float:
-        # TODO: Tune with the following settings
-        # acceleration_command = self.acceleration / 16 if self.acceleration < 0 else self.acceleration / 6
-        # return np.clip(acceleration_command, -1, 1)
 
-        # TODO: For now keep this.
-        return np.clip(self.acceleration, -1, 1)
-
-    @property
-    def steering_command(self) -> float:
-        max_steering_angle = self.cfg["control"]["input_constraints"]["steering_max"]
-        return np.clip(self.steering_angle / max_steering_angle, -1, 1)
 
     @property
     def control_command(self) -> tuple:
@@ -145,10 +152,6 @@ class ElTuarMPC(AssettoCorsaInterface):
             reference_speed = self.reference_speeds[centre_index]
         return reference_speed
 
-    @property
-    def control_intervals(self) -> List[float]:
-        return self.MPC.cum_time
-
     def behaviour(self, observation: Dict) -> np.array:
         return self.select_action(observation)
 
@@ -173,25 +176,10 @@ class ElTuarMPC(AssettoCorsaInterface):
             + state["velocity_y"] ** 2
             + state["velocity_z"] ** 2
         )
-
-        logger.info(f'Speed km/h: {obs["state"]["speed_kmh"]}')
-        logger.info(f"Speed calculated: {speed}")
+        controls = self.control_input
+        logger.info(f"Input Control: {controls}")
         System_Monitor.log_select_action(speed)
-
-        acceleration_command = np.clip(self.acceleration_command, -1.0, 1.0)
-        brake = acceleration_command if acceleration_command < 0 else 0.0
-        throttle = acceleration_command if acceleration_command > 0 else 0.0
-        throttle = np.clip(throttle, 0.0, 0.40)
-        # throttle = 0.0
-        with self.update_command_index_lock:
-            time_since_update = time.time() - self.last_update_timestamp
-            logger.info(f"Time since update: {time_since_update}")
-            logger.info(f"Times: {self.control_intervals}")
-            if self.command_index < 49:
-                self.command_index += 1
-        # return np.array([0, 0, 0])
-        # logger.info([-1.0 * self.steering_command, brake, throttle])
-        return np.array([-1.0 * self.steering_command, brake, throttle])
+        return controls
 
     def maybe_update_control(self, obs):
         if not self.update_control_lock.locked():
@@ -246,17 +234,16 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _update_control(self):
         self.update_reference_speed()
         self.MPC.get_control(self.reference_path)
-        self.maybe_reset_command_index()
+        self.maybe_reset_last_update_timestamp()
 
     def update_reference_speed(self):
         self.MPC.SpeedProfileConstraints["v_max"] = self.reference_speed
         reference_speed = self.MPC.SpeedProfileConstraints["v_max"]
         # logger.info(f"Using Reference speed {reference_speed:.2f}")
 
-    def maybe_reset_command_index(self):
+    def maybe_reset_last_update_timestamp (self):
         if self.MPC.infeasibility_counter == 0:
-            with self.update_command_index_lock:
-                self.command_index = 0
+            with self.last_update_timestamp_lock:
                 self.last_update_timestamp = time.time()
 
     @track_runtime

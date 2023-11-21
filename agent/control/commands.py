@@ -1,13 +1,24 @@
+from __future__ import annotations
 from typing import List
 
 import numpy as np
 
 
 class TemporalCommandInterpolator:
-    def __init__(self):
-        self._cum_time = np.array([])
-        self._commands = np.array([])
-
+    def __init__(self, mpc: SpatialMPC):
+        self._MPC = mpc
+    
+    @property
+    def _cum_time(self) -> np.array:
+        return self._MPC.cum_time
+    
+    @property
+    def _commands(self) -> np.array:
+        return self._MPC.projected_control.T
+    
+    def __call__(self, elapsed_time: float) -> np.array:
+        return self.get_command(elapsed_time)
+        
     def get_command(self, elapsed_time: float) -> np.array:
         index_a, index_b = self._get_indices_of_commands_to_interpolate(elapsed_time)
         return self._interpolate_command(index_a, index_b, elapsed_time)

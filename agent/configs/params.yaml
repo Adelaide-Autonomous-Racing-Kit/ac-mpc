@@ -72,6 +72,6 @@ control:
     input_constraints:
         steering_max: 0.3
     wheel_base: 2.898
-    step_cost: [1.0e-1, 0.0, 0.0] # e_y, e_psi, t
+    step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
     r_term: [1.0e-6, 1.0e+1] # velocity, steering
     final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t

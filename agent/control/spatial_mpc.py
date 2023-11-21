@@ -35,7 +35,7 @@ class SpatialMPC:
         self.Q = Q  # weight matrix state vector
         self.R = R  # weight matrix input vector
         self.QN = QN  # weight matrix terminal
-        self.cum_time = []
+        self.cum_time = np.zeros((1))
 
         # Model
         self.model = model
