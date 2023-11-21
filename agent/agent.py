@@ -164,7 +164,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             and a is the normalized acceleration.
         """
         if self.thread_exception is not None:
-            raise self.thread_exception
+            logger.warning(f"Thread Exception Thrown: {self.thread_exception}")
 
         if self.cfg["multithreading"]:
             self.executor.submit(self.maybe_update_control, obs)
