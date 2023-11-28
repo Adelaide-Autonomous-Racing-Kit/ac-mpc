@@ -11,6 +11,7 @@ from models.efficientnet_v2 import EfficientNetV2_FPN_Segmentation
 from models.deeplab import resnet, deeplabv3plus
 from monitor.system_monitor import track_runtime
 
+# V2 FPN
 COLOUR_LIST = np.array(
     [
         (84, 84, 84),
@@ -25,6 +26,21 @@ COLOUR_LIST = np.array(
         (0, 102, 17),
         (0, 0, 255),
         (0, 0, 0),
+    ]
+)
+# V3 drivable FPN
+COLOUR_LIST = np.array(
+    [
+        (0, 0, 0),
+        (0, 255, 249),
+        (84, 84, 84),
+        (255, 119, 51),
+        (255, 255, 255),
+        (255, 255, 0),
+        (170, 255, 128),
+        (255, 42, 0),
+        (153, 153, 255),
+        (255, 179, 204),
     ]
 )
 
@@ -83,8 +99,11 @@ class TrackSegmenter:
         output = self.model.predict(x)
         output = torch.argmax(output, dim=1).cpu().numpy().astype(np.uint8)
         vis = np.squeeze(np.array(COLOUR_LIST[output], dtype=np.uint8))
+        # FPN v2
         # output[output != 0] = 1
-        output[output == 0] = 2
-        output -= 1
-        output[output != 1] = 0
+        # output[output == 0] = 2
+        # output -= 1
+        # output[output != 1] = 0
+        # FPN v3
+        output[output > 1] = 0
         return output, vis

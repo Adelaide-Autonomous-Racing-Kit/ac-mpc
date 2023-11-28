@@ -54,6 +54,6 @@ class Visualiser:
                     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
                     cv2.imshow(window_name, self.frames_to_display[window_name])
                     cv2.waitKey(1)
-                time.sleep(0.5)
+                time.sleep(0.01)
             except Exception as e:
                 self.agent.thread_exception = e

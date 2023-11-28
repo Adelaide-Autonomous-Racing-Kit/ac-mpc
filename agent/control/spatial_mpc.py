@@ -112,8 +112,14 @@ class SpatialMPC:
 
             # Compute dynamic constraint on velocity
             v_max_dyn = np.sqrt(ay_max / (np.abs(ki) + self.eps))
-            if v_max_dyn < v_max[i]:
-                v_max[i] = v_max_dyn
+            # if v_max_dyn < v_max[i]:
+            #     v_max[i] = v_max_dyn
+
+            v_max[i] = min([v_max_dyn, v_max[i]]) +2e0
+            v_min[i] = min([v_max_dyn, v_min[i]]) -2e0
+
+        logger.warning(v_max)
+        logger.warning(v_min)
 
         if end_vel:
             v_max[-1] = min(end_vel, v_max[-1])
@@ -133,8 +139,10 @@ class SpatialMPC:
 
         # Solve optimization problem
         problem = osqp.OSQP()
-        problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=False)
+        problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=True)
         speed_profile = problem.solve().x
+
+        logger.warning(speed_profile)
 
         # Assign reference velocity to every waypoint
         for i, wp in enumerate(reference_path):
@@ -252,6 +260,7 @@ class SpatialMPC:
         xmax_dyn = np.kron(np.ones(self.N + 1), xmax)
         # Dynamic input constraints
         umax_dyn = np.kron(np.ones(self.N), umax)
+        umin_dyn = np.kron(np.ones(self.N), umin)
         # umax_dyn[:2] = 0
         # Get curvature predictions from previous control signals
         kappa_pred = (
@@ -285,8 +294,14 @@ class SpatialMPC:
 
             # Constrain maximum speed based on predicted car curvature
             vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred[n]) + 1e-12))
-            if vmax_dyn < umax_dyn[self.nu * n]:
-                umax_dyn[self.nu * n] = vmax_dyn
+            # if vmax_dyn < umax_dyn[self.nu * n]:
+            #     umax_dyn[self.nu * n] = vmax_dyn
+
+            umax_dyn[self.nu * n] = min([vmax_dyn, umax_dyn[self.nu * n], v_ref]) + 1e-1
+            umin_dyn[self.nu * n] = min([vmax_dyn, umin_dyn[self.nu * n], v_ref]) - 1e-1
+        
+        logger.warning(f"lower bounds: {umin_dyn}")
+        logger.warning(f"upper bounds: {umax_dyn}")
 
         ub = (
             np.array([reference_path[i]["width"] / 2 for i in range(self.N)])
@@ -316,7 +331,7 @@ class SpatialMPC:
         A = sparse.vstack([Aeq, Aineq], format="csc")
 
         # Get upper and lower bound vectors for equality constraints
-        lineq = np.hstack([xmin_dyn, np.kron(np.ones(self.N), umin)])
+        lineq = np.hstack([xmin_dyn, umin_dyn])
         uineq = np.hstack([xmax_dyn, umax_dyn])
         # Get upper and lower bound vectors for inequality constraints
         x0 = np.array(spatial_state)
