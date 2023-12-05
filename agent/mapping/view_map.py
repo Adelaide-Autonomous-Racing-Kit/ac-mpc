@@ -1,16 +1,19 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mapping.map_maker import MapMaker
+from map_maker import MapMaker
 
 if __name__ == "__main__":
     track_dict = np.load(
-        "agents/utils/our_racetracks/anglesly2.npy", allow_pickle=True
+        "../../track_maps/monza.npy", allow_pickle=True
     ).item()
 
     outside = track_dict.get("outside_track")
     inside = track_dict.get("inside_track")
     centre = track_dict.get("centre_track")
+    print(outside)
+    print(inside)
+    print(centre)
 
     outside = MapMaker.upsample_track(outside)
     inside = MapMaker.upsample_track(inside)

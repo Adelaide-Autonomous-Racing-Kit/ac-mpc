@@ -30,8 +30,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.setup()
 
         self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])
-        self.MPC = build_mpc(self.cfg["control"], self.cfg["vehicle"])
-        self.command_interpolator = TemporalCommandInterpolator(self.MPC)
+        # self.MPC = build_mpc(self.cfg["racing"]["control"], self.cfg["vehicle"])
+        # self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
         # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
         self.visualiser = Visualiser(self.cfg["debugging"], self)
@@ -51,6 +51,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.previous_steering_command = 0
         self.previous_acceleration_command = 0
         self.current_time = time.time()
+        self._is_mapping_setup = False
+        self._is_racing_setup = False
 
     def setup_threading(self):
         self.executor = ThreadPoolExecutor(max_workers=8)
@@ -92,31 +94,25 @@ class ElTuarMPC(AssettoCorsaInterface):
         with self.last_update_timestamp_lock:
             time_since_update = time.time() - self.last_update_timestamp
         desired_velocity, desired_yaw = self.command_interpolator(time_since_update)
-        desired_velocity = self._process_velocity(desired_velocity)
         steering_angle = self._process_yaw(desired_yaw)
         raw_acceleration = self._calculate_acceleration(desired_velocity)
-        throttle, brake = self._calculate_acceleration_command(raw_acceleration)
+        throttle, brake = self._calculate_commands(raw_acceleration)
         return np.array([steering_angle, brake, throttle])
-
-    def _process_velocity(self, velocity: float) -> float:
-        max_velocity = self.cfg["control"]["speed_profile_constraints"]["v_max"]
-        min_velocity = self.cfg["control"]["speed_profile_constraints"]["v_min"]
-        #return np.clip(velocity, min_velocity, max_velocity)
-        return velocity
     
     def _process_yaw(self, yaw: float) -> float:
-        max_steering_angle = self.cfg["control"]["input_constraints"]["steering_max"]
+        max_steering_angle = self.MPC.delta_max
         steering_angle = np.clip(yaw / max_steering_angle, -1, 1)
         self.steering_command = steering_angle
         return -1.0 * steering_angle
 
     def _calculate_acceleration(self, desired_velocity: float) -> float:
-        max_acceleration = self.cfg["control"]["speed_profile_constraints"]["a_max"]
+        max_acceleration = self.MPC.SpeedProfileConstraints["a_max"]
+        logger.info(f"Velocity: {desired_velocity}, {self.pose['velocity']}")
         target = (desired_velocity - self.pose["velocity"]) / 4
-        logger.info(f"Velocity: {self.pose['velocity']}")
+        logger.info(f"Acceleration: {target}, {max_acceleration}")
         return np.clip(target, -1.0, max_acceleration)
 
-    def _calculate_acceleration_command(self, acceleration: float) -> List[float]:
+    def _calculate_commands(self, acceleration: float) -> List[float]:
         acceleration = np.clip(acceleration, -1.0, 1.0)
         self.acceleration_command = acceleration
         brake = -1 * acceleration if acceleration < 0 else 0.0
@@ -138,7 +134,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             [
                 self.centre_track_detections[0::ds, 0],
                 self.centre_track_detections[0::ds, 1],
-                np.linspace(20.0, 3.0, self.MPC.MPC_horizon),
+                np.linspace(10.0, 6.0, self.MPC.MPC_horizon),
             ]
         ).T
         return reference_path
@@ -152,15 +148,66 @@ class ElTuarMPC(AssettoCorsaInterface):
         return reference_speed
 
     def behaviour(self, observation: Dict) -> np.array:
+        if self._is_mapping:
+            self._maybe_setup_mapping()
+            if self._is_mapping_laps_completed(observation):
+                return self._finalise_mapping(observation)
+        else:
+            self._maybe_setup_racing()
         return self.select_action(observation)
+
+    @property
+    def _is_mapping(self) -> bool:
+        return self.cfg["mapping"]["create_map"] and not self.mapper.map_built
+    
+    def _maybe_setup_mapping(self):
+        if not self._is_mapping_setup:
+            self._setup_mapping()
+    
+    def _setup_mapping(self):
+        logger.info(
+            f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
+        )
+        self.MPC = build_mpc(self.cfg["mapping"]["control"], self.cfg["vehicle"])
+        self.command_interpolator = TemporalCommandInterpolator(self.MPC)
+        self._is_mapping_setup = True
+    
+    def _is_mapping_laps_completed(self, observation: Dict) -> bool:
+        n_laps_completed = observation["state"]["completed_laps"]
+        return n_laps_completed >= self.cfg['mapping']['number_of_mapping_laps']
+
+    def _finalise_mapping(self, observation: Dict) -> np.array:
+        if self._is_car_stopped(observation):
+            self._create_map()
+        return np.array([0.0, 1.0, 0.0])
+    
+    def _is_car_stopped(self, observation) -> bool:
+        return observation["state"]["speed_kmh"] <= 1
+
+    def _create_map(self):
+        """
+        Post-process and save map
+        """
+        self.mapper.save_map(filename=self.cfg["mapping"]["map_path"])
+    
+    def _maybe_setup_racing(self):
+        if not self._is_racing_setup:
+            self._setup_racing()
+    
+    def _setup_racing(self):
+        self.MPC = build_mpc(self.cfg["racing"]["control"], self.cfg["vehicle"])
+        self.command_interpolator = TemporalCommandInterpolator(self.MPC)
+        self._load_map()
+        self._is_racing_setup = True
+
 
     def select_action(self, obs) -> np.array:
         """
         # Outputs action given the current observation
         returns:
-            action: np.array (2,)
-            action should be in the form of [\delta, a], where \delta is the normalized steering angle,
-            and a is the normalized acceleration.
+            action: np.array (3,)
+            action should be in the form of [\delta, b, t], where \delta is the normalised steering angle,
+            t is the normalised throttle and b is normalised brake.
         """
         if self.thread_exception is not None:
             logger.warning(f"Thread Exception Thrown: {self.thread_exception}")
@@ -176,8 +223,8 @@ class ElTuarMPC(AssettoCorsaInterface):
             + state["velocity_z"] ** 2
         )
         controls = self.control_input
-        logger.info(f"Input Control: {controls}")
         System_Monitor.log_select_action(speed)
+        logger.info(controls)
         return controls
 
     def maybe_update_control(self, obs):
@@ -265,15 +312,11 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _maybe_draw_visualisations(self, obs: Dict):
         self.visualiser.draw(obs)
 
-    def load_map(self, filename: str):
-        """Loads the generated map if exists, or the ground truth map otherwise."""
-        if self.cfg["mapping"]["create_map"]:
-            assert pathlib.Path(filename + ".npy").is_file()
-            track_dict = np.load(filename + ".npy", allow_pickle=True).item()
-        else:
-            track_dict = np.load(
-                self.cfg["mapping"]["map_path"] + ".npy", allow_pickle=True
-            ).item()
+    def load_map(self):
+        """Loads the generated map"""
+        track_dict = np.load(
+            self.cfg["mapping"]["map_path"] + ".npy", allow_pickle=True
+        ).item()
 
         tracks = {
             "left": track_dict.get("outside_track"),
@@ -290,31 +333,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         )
         return tracks
 
-    def training(self, env):
-        if not self.cfg["mapping"]["create_map"]:
-            return
-
-        logger.info(
-            f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
-        )
-        episode_count = 0
-
-        self.MPC.SpeedProfileConstraints = self.cfg["mapping"][
-            "speed_profile_constraints"
-        ]
-        self.MPC.ay_max = self.MPC.SpeedProfileConstraints["ay_max"]
-
-        while episode_count < self.cfg["mapping"]["number_of_mapping_laps"]:
-            state, _ = env.reset()
-            self.register_reset(state)
-
-            done = False
-            while not done:
-                action = self.select_action(state)
-                state, reward, done, _ = env.step(action)
-
-            episode_count += 1
-            logger.info(f"Completed episode: {episode_count}")
 
     def register_reset(self, obs) -> np.array:
         """
@@ -326,19 +344,9 @@ class ElTuarMPC(AssettoCorsaInterface):
             self.localiser.sampling_strategy()
         return self.select_action(obs)
 
-    def load_model(self, path):
-        if pathlib.Path(self.cfg["mapping"]["map_path"]).is_file():
-            tracks = self.load_map(filename=self.cfg["mapping"]["map_path"])
-        else:
-            tracks = self.load_map(filename=path)
-
-        self.MPC.SpeedProfileConstraints = self.cfg["control"][
-            "speed_profile_constraints"
-        ]
-        self.MPC.ay_max = self.MPC.SpeedProfileConstraints["ay_max"]
-
-        self.calculate_speed_profile(tracks["centre"])
-
+    def _load_model(self):
+        tracks = self.load_map(filename=self.cfg["mapping"]["map_path"])
+        self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
             self.localiser = LocaliseOnTrack(
                 tracks["centre"],
@@ -346,19 +354,10 @@ class ElTuarMPC(AssettoCorsaInterface):
                 tracks["right"],
                 self.cfg["localisation"],
             )
-
         self.mapper.map_built = True
 
-    def save_model(self, path):
-        """
-        Save model checkpoints.
-        """
-        if self.cfg["mapping"]["create_map"]:
-            self.mapper.save_map(filename=path)
-            if not pathlib.Path(self.cfg["mapping"]["map_path"]).is_file():
-                self.mapper.save_map(filename=self.cfg["mapping"]["map_path"])
 
-    def calculate_speed_profile(self, centre_track):
+    def _calculate_speed_profile(self, centre_track):
         road_width = 9.5
         # TODO: James cringe at this line of code
         centre_track = np.stack(

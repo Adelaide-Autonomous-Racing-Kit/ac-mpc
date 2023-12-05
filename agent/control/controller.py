@@ -7,12 +7,6 @@ from scipy import sparse
 from control.dynamics import SpatialBicycleModel
 from control.spatial_mpc import SpatialMPC
 
-# class SpatialModelPredictiveController:
-#    def __init__(self, control_cfg: Dict, vehicle_cfg: Dict):
-#        self.MPC_horizon = control_cfg["horizon"]
-#        self.v_max = control_cfg["speed_profile_constraints"]["v_max"]
-#        self._setup_model_predictive_controller(control_cfg, vehicle_cfg)
-
 
 def build_mpc(control_cfg: Dict, vehicle_cfg: Dict):
     Q = sparse.diags(control_cfg["step_cost"])  # e_y, e_psi, t
@@ -37,6 +31,7 @@ def build_mpc(control_cfg: Dict, vehicle_cfg: Dict):
 
     spatial_MPC = SpatialMPC(
         model,
+        delta_max,
         control_cfg["horizon"],
         Q,
         R,

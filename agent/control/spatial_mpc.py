@@ -10,6 +10,7 @@ class SpatialMPC:
     def __init__(
         self,
         model,
+        delta_max,
         N,
         Q,
         R,
@@ -55,6 +56,9 @@ class SpatialMPC:
 
         # Maximum lateral acceleration
         self.ay_max = self.SpeedProfileConstraints["ay_max"]
+        
+        # Maximum steering angle
+        self.delta_max = delta_max
 
         # Current control and prediction
         self.current_prediction = None
@@ -118,9 +122,6 @@ class SpatialMPC:
             v_max[i] = min([v_max_dyn, v_max[i]]) +2e0
             v_min[i] = min([v_max_dyn, v_min[i]]) -2e0
 
-        logger.warning(v_max)
-        logger.warning(v_min)
-
         if end_vel:
             v_max[-1] = min(end_vel, v_max[-1])
 
@@ -141,8 +142,6 @@ class SpatialMPC:
         problem = osqp.OSQP()
         problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=True)
         speed_profile = problem.solve().x
-
-        logger.warning(speed_profile)
 
         # Assign reference velocity to every waypoint
         for i, wp in enumerate(reference_path):
@@ -300,9 +299,6 @@ class SpatialMPC:
             umax_dyn[self.nu * n] = min([vmax_dyn, umax_dyn[self.nu * n], v_ref]) + 1e-1
             umin_dyn[self.nu * n] = min([vmax_dyn, umin_dyn[self.nu * n], v_ref]) - 1e-1
         
-        logger.warning(f"lower bounds: {umin_dyn}")
-        logger.warning(f"upper bounds: {umax_dyn}")
-
         ub = (
             np.array([reference_path[i]["width"] / 2 for i in range(self.N)])
             - self.model.safety_margin

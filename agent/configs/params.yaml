@@ -29,15 +29,23 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: agents/utils/our_racetracks/anglesly2
-    create_map: False
+    map_path: track_maps/monza
+    create_map: True
     number_of_mapping_laps: 1
-    speed_profile_constraints:
-        v_min: 0.0
-        v_max: 10.0 
-        a_min: -8.0
-        a_max: 6.0
-        ay_max: 2.0
+    control:
+        horizon: 50
+        speed_profile_constraints:
+            v_min: 5.0
+            v_max: 10.0
+            a_min: -3.0
+            a_max: 6.0
+            ay_max: 4.0
+        input_constraints:
+            steering_max: 0.3
+        wheel_base: 2.898
+        step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-6, 1.0e+1] # velocity, steering
+        final_cost: [0.0, 0.0, 1.0e-4] # e_y, e_psi, t
 localisation:
     use_localisation: False
     n_particles: 500
@@ -60,17 +68,18 @@ localisation:
     convergence_criteria:
         maximum_distance: 30
         maximum_angle: 90 # deg
-control:
-    horizon: 50
-    speed_profile_constraints:
-        v_min: 5.0
-        v_max: 60
-        a_min: -0.12
-        a_max: 6.0
-        ay_max: 4.0
-    input_constraints:
-        steering_max: 0.3
-    wheel_base: 2.898
-    step_cost: [1.0e-2, 0.0e-2, 0.0] # e_y, e_psi, t
-    r_term: [1.0e-6, 1.0e+1] # velocity, steering
-    final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t
+racing:
+    control:
+        horizon: 50
+        speed_profile_constraints:
+            v_min: 5.0
+            v_max: 60
+            a_min: -0.12
+            a_max: 6.0
+            ay_max: 4.0
+        input_constraints:
+            steering_max: 0.3
+        wheel_base: 2.898
+        step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-6, 1.0e+1] # velocity, steering
+        final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t
