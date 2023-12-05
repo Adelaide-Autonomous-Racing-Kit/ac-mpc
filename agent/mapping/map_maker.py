@@ -1,4 +1,5 @@
 import numpy as np
+from loguru import logger
 from concorde.tsp import TSPSolver
 from scipy.signal import savgol_filter
 from scipy.spatial.distance import cdist
@@ -18,7 +19,7 @@ class MapMaker:
         self.map_built = False
 
     def map_world_pose_xy(self, processed_pose):
-        xy_positions = [processed_pose["x"], processed_pose["y"]]
+        xy_positions = [-processed_pose["x"], processed_pose["z"]]
         self.xy_points_driven.append(xy_positions)
         return xy_positions
 
@@ -65,18 +66,22 @@ class MapMaker:
 
         return outside_points_should_go_forward
 
+        logger.warning("Outside Track Points")
     def save_map(self, filename):
         outsides = []
         for points_at_timestep in self.outside_track:
             outsides.extend(points_at_timestep[:1, :])
+        logger.warning("Outside Track Points")
         outsides = MapMaker.order_points(np.array(outsides))
 
         insides = []
         for points_at_timestep in self.inside_track:
             insides.extend(points_at_timestep[:1, :])
+        logger.warning("Inside Track Points")
         insides = MapMaker.order_points(np.array(insides))
 
         distances = cdist(insides, outsides)
+        logger.warning("Center Track Points")
         centres = MapMaker.order_points(
             (insides + outsides[np.argmin(distances, axis=1)]) / 2
         )

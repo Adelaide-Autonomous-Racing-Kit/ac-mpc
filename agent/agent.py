@@ -30,8 +30,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.setup()
 
         self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])
-        # self.MPC = build_mpc(self.cfg["racing"]["control"], self.cfg["vehicle"])
-        # self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
         # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
         self.visualiser = Visualiser(self.cfg["debugging"], self)
@@ -107,9 +105,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _calculate_acceleration(self, desired_velocity: float) -> float:
         max_acceleration = self.MPC.SpeedProfileConstraints["a_max"]
-        logger.info(f"Velocity: {desired_velocity}, {self.pose['velocity']}")
         target = (desired_velocity - self.pose["velocity"]) / 4
-        logger.info(f"Acceleration: {target}, {max_acceleration}")
         return np.clip(target, -1.0, max_acceleration)
 
     def _calculate_commands(self, acceleration: float) -> List[float]:
@@ -224,7 +220,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         )
         controls = self.control_input
         System_Monitor.log_select_action(speed)
-        logger.info(controls)
         return controls
 
     def maybe_update_control(self, obs):
@@ -312,7 +307,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _maybe_draw_visualisations(self, obs: Dict):
         self.visualiser.draw(obs)
 
-    def load_map(self):
+    def _load_map(self):
         """Loads the generated map"""
         track_dict = np.load(
             self.cfg["mapping"]["map_path"] + ".npy", allow_pickle=True
@@ -345,7 +340,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         return self.select_action(obs)
 
     def _load_model(self):
-        tracks = self.load_map(filename=self.cfg["mapping"]["map_path"])
+        tracks = self._load_map()
         self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
             self.localiser = LocaliseOnTrack(

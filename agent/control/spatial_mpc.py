@@ -140,7 +140,7 @@ class SpatialMPC:
 
         # Solve optimization problem
         problem = osqp.OSQP()
-        problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=True)
+        problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=False)
         speed_profile = problem.solve().x
 
         # Assign reference velocity to every waypoint
