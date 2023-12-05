@@ -20,7 +20,6 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    # model_path: "agent/models/checkpoints/deeplab-resnet18-OS8-monza-2.ckpt"
     model_path: "agent/models/checkpoints/fpn-resnet-18-v3.ckpt"
     single_cam: True
     image_width: 1280
