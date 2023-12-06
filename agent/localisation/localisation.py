@@ -7,7 +7,6 @@ from utils.kdtree import KDTree
 from loguru import logger
 
 np.random.seed(0)
-WHEEL_BASE = 3.016
 
 
 class LocaliseOnTrack:
@@ -52,6 +51,7 @@ class LocaliseOnTrack:
         self.thresholds["rotation"] *= np.pi / 180
         self.sampling_noise["yaw"] *= np.pi / 180
         self.control_noise["yaw"] *= np.pi / 180
+        self.wheel_base = cfg["wheel_base"]
 
     @property
     def n_particles(self) -> int:
@@ -131,11 +131,11 @@ class LocaliseOnTrack:
         # beta = np.arctan(0.5 * np.tan(delta))
         # x_dot[:, 0] = velocity * np.cos(phi + beta)
         # x_dot[:, 1] = velocity * np.sin(phi + beta)
-        # x_dot[:, 2] = velocity * np.sin(beta) / (WHEEL_BASE / 2)
+        # x_dot[:, 2] = velocity * np.sin(beta) / (self.wheel_base / 2)
         # w.r.t. the back axle
         x_dot[:, 0] = velocity * np.cos(phi)
         x_dot[:, 1] = velocity * np.sin(phi)
-        x_dot[:, 2] = velocity * np.tan(delta) / WHEEL_BASE
+        x_dot[:, 2] = velocity * np.tan(delta) / self.wheel_base
         return x_dot
 
     def advance_particles(self, dt: float, x_dot: np.array):

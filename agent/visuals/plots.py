@@ -28,11 +28,7 @@ def draw_localisation_map(agent, canvas: np.array, obs: Dict) -> np.array:
     centre_track = _get_transformed_points(localiser.centre_track, centre_idx, state)
     left_track = _get_transformed_points(localiser.left_track, left_idx, state)
     right_track = _get_transformed_points(localiser.right_track, right_idx, state)
-    if agent.raceline is not None:
-        raceline_track = _get_transformed_points(agent.raceline, centre_idx, state)
-        lines_to_draw = [raceline_track.astype(np.int32)]
-        utils.draw_track_lines_on_bev(canvas, 4, lines_to_draw, (0, 0, 255))
-
+    
     """
     left_track1 = smooth_track_with_polyfit(
         left_track.T, number_of_track_points, degree=4

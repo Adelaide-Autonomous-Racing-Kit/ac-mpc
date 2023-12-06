@@ -5,14 +5,14 @@ multithreading: False
 test: False
 seed: 0
 vehicle:
-    wheel_base: 2.898
+    wheel_base: 2.700
     width: 2.5
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     show_camera: False
     show_control_image: True
-    show_localisation_map: False
+    show_localisation_map: True
     show_segmentation: True
     show_visualised_predictions: False
     verbose: True
@@ -31,7 +31,7 @@ perception:
 mapping:
     map_path: track_maps/monza
     create_map: False
-    number_of_mapping_laps: 1
+    number_of_mapping_laps: 2
     control:
         horizon: 50
         speed_profile_constraints:
@@ -42,7 +42,7 @@ mapping:
             ay_max: 4.0
         input_constraints:
             steering_max: 0.3
-        wheel_base: 2.898
+        wheel_base: 2.700
         step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-4] # e_y, e_psi, t
@@ -50,6 +50,7 @@ localisation:
     use_localisation: True
     n_particles: 500
     n_converged_particles: 500
+    wheel_base: 2.700
     sampling_noise:
         x: 1.0
         y: 1.0
@@ -79,7 +80,7 @@ racing:
             ay_max: 4.0
         input_constraints:
             steering_max: 0.3
-        wheel_base: 2.898
+        wheel_base: 2.700
         step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t

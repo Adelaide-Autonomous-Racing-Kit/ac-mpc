@@ -43,7 +43,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def setup_state(self):
         self.last_update_timestamp = time.time()
-        self.pose = {"velocity": 0}
+        self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0
         self.previous_steering_command = 0
@@ -76,7 +76,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def previous_steering_angle(self) -> float:
-        return self.previous_steering_command * 0.3
+        return self.previous_steering_command * self.MPC.delta_max
 
     @property
     def previous_acceleration(self) -> float:
@@ -99,9 +99,9 @@ class ElTuarMPC(AssettoCorsaInterface):
     
     def _process_yaw(self, yaw: float) -> float:
         max_steering_angle = self.MPC.delta_max
-        steering_angle = np.clip(yaw / max_steering_angle, -1, 1)
+        steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
         self.steering_command = steering_angle
-        return -1.0 * steering_angle
+        return steering_angle
 
     def _calculate_acceleration(self, desired_velocity: float) -> float:
         max_acceleration = self.MPC.SpeedProfileConstraints["a_max"]
@@ -118,10 +118,11 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def control_command(self) -> tuple:
-        steering_angle = self.previous_steering_angle
+        steering_angle = -1.0 * self.pose["steering_angle"]
+        logger.info(f"Steering from game: {steering_angle}")
         acceleration = self.previous_acceleration
-        pose = self.pose["velocity"]
-        return (steering_angle, acceleration, pose)
+        velocity = self.pose["velocity"]
+        return (steering_angle, acceleration, velocity)
 
     @property
     def reference_path(self) -> np.array:
@@ -193,7 +194,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _setup_racing(self):
         self.MPC = build_mpc(self.cfg["racing"]["control"], self.cfg["vehicle"])
         self.command_interpolator = TemporalCommandInterpolator(self.MPC)
-        self._load_map()
+        self._load_model()
         self._is_racing_setup = True
 
 
@@ -252,6 +253,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _update_state(self, obs: Dict):
         self.dt = self.current_time - self.previous_time
         self.pose["velocity"] = obs["speed"]
+        self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
         self.tracks = obs["tracks"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
@@ -314,14 +316,10 @@ class ElTuarMPC(AssettoCorsaInterface):
         ).item()
 
         tracks = {
-            "left": track_dict.get("outside_track"),
-            "right": track_dict.get("inside_track"),
-            "centre": track_dict.get("centre_track"),
+            "left": track_dict["outside_track"],
+            "right": track_dict["inside_track"],
+            "centre": track_dict["centre_track"],
         }
-        if "raceline" in track_dict:
-            self.raceline = track_dict.get("raceline")
-        else:
-            self.raceline = None
         logger.info(
             f"Loaded map with shapes: {tracks['left'].shape=}"
             + f"{tracks['right'].shape=}, {tracks['centre'].shape=}"
@@ -341,6 +339,17 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _load_model(self):
         tracks = self._load_map()
+
+        # Remove near duplicate centre points
+        d = np.diff(tracks["centre"], axis=0)
+        dists = np.hypot(d[:,0], d[:,1])
+        is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
+        is_not_duplicated[1:] = dists > 0.0001
+        tracks["left"] = tracks["left"][is_not_duplicated]
+        tracks["right"] = tracks["right"][is_not_duplicated]
+        tracks["centre"] = tracks["centre"][is_not_duplicated]
+
+
         self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
             self.localiser = LocaliseOnTrack(
@@ -363,6 +372,9 @@ class ElTuarMPC(AssettoCorsaInterface):
             ]
         ).T
         reference_path = self.MPC.construct_waypoints(centre_track)
+        for waypoint in reference_path:
+            if 0.001 > waypoint["dist_ahead"] > -0.001:
+                logger.info(f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})")
         reference_path = self.MPC.compute_speed_profile(reference_path)
 
         plot_ref_path = np.array(

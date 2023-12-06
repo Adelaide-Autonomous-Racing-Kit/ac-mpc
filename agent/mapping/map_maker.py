@@ -66,7 +66,7 @@ class MapMaker:
 
         return outside_points_should_go_forward
 
-        logger.warning("Outside Track Points")
+
     def save_map(self, filename):
         outsides = []
         for points_at_timestep in self.outside_track:
@@ -117,6 +117,15 @@ class MapMaker:
         insides = self.upsample_track(insides)
         centres = self.upsample_track(centres)
 
+        # Remove near duplicate centre points
+        d = np.diff(centres, axis=0)
+        dists = np.hypot(d[:,0], d[:,1])
+        is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
+        is_not_duplicated[1:] = dists > 0.0001
+        outsides = outsides[is_not_duplicated]
+        insides = insides[is_not_duplicated]
+        centres = centres[is_not_duplicated]
+            
         output_map = {
             "outside_track": outsides,
             "inside_track": insides,
