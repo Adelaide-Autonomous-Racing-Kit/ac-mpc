@@ -10,6 +10,7 @@ from loguru import logger
 from scipy.signal import savgol_filter
 from src.interface import AssettoCorsaInterface
 
+from ace.steering import SteeringGeometry
 from control.controller import build_mpc
 from control.commands import TemporalCommandInterpolator
 from localisation.localisation import LocaliseOnTrack
@@ -28,7 +29,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         super().__init__()
         self.cfg = load.yaml("agent/configs/params.yaml")
         self.setup()
-
+        self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
         self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
         # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
@@ -118,7 +119,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def control_command(self) -> tuple:
-        steering_angle = -1.0 * self.pose["steering_angle"]
+        steering_angle = self.pose["steering_angle"]
         logger.info(f"Steering from game: {steering_angle}")
         acceleration = self.previous_acceleration
         velocity = self.pose["velocity"]
@@ -192,7 +193,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             self._setup_racing()
     
     def _setup_racing(self):
-        self.MPC = build_mpc(self.cfg["racing"]["control"], self.cfg["vehicle"])
+        self.MPC = build_mpc(self.cfg["racing"]["control"], self.vehicle_data)
         self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self._load_model()
         self._is_racing_setup = True
@@ -353,6 +354,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
             self.localiser = LocaliseOnTrack(
+                self.vehicle_data,
                 tracks["centre"],
                 tracks["left"],
                 tracks["right"],

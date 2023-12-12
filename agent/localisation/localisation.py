@@ -12,11 +12,13 @@ np.random.seed(0)
 class LocaliseOnTrack:
     def __init__(
         self,
+        vehicle_data,
         centre,
         left,
         right,
         cfg,
     ):
+        self.vehicle_data = vehicle_data
         distances = np.linalg.norm(centre[1:] - centre[:-1], axis=1)
         self.distance_between_map_points = np.mean(distances)
 
@@ -51,7 +53,7 @@ class LocaliseOnTrack:
         self.thresholds["rotation"] *= np.pi / 180
         self.sampling_noise["yaw"] *= np.pi / 180
         self.control_noise["yaw"] *= np.pi / 180
-        self.wheel_base = cfg["wheel_base"]
+        self.wheel_base = self.vehicle_data.vehicle_data.wheelbase
 
     @property
     def n_particles(self) -> int:
@@ -103,6 +105,9 @@ class LocaliseOnTrack:
             in the movements
             Control input will have velocity
         """
+        logger.info(f"Control Input Before: {control_input}")
+        control_input = (-self.vehicle_data.steering_angle(control_input[0]), *control_input[1:])
+        logger.info(f"Control Input After: {control_input}")
         delta, velocity = self.add_noise_to_control(control_input)
         x_dot = self.calcualte_x_dot(delta, velocity)
         self.advance_particles(dt, x_dot)

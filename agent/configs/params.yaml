@@ -5,8 +5,7 @@ multithreading: False
 test: False
 seed: 0
 vehicle:
-    wheel_base: 2.700
-    width: 2.5
+    data_path: "data/audi_r8_lms_2016"
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
@@ -40,9 +39,6 @@ mapping:
             a_min: -3.0
             a_max: 6.0
             ay_max: 4.0
-        input_constraints:
-            steering_max: 0.3
-        wheel_base: 2.700
         step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-4] # e_y, e_psi, t
@@ -50,7 +46,6 @@ localisation:
     use_localisation: True
     n_particles: 500
     n_converged_particles: 500
-    wheel_base: 2.700
     sampling_noise:
         x: 1.0
         y: 1.0
@@ -78,9 +73,6 @@ racing:
             a_min: -0.12
             a_max: 6.0
             ay_max: 4.0
-        input_constraints:
-            steering_max: 0.3
-        wheel_base: 2.700
         step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
-        r_term: [1.0e-6, 1.0e+1] # velocity, steering
+        r_term: [1.0e-6, 5.0] # velocity, steering
         final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t
