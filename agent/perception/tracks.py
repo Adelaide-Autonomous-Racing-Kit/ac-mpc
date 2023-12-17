@@ -67,11 +67,12 @@ class TrackLimitPerception:
             centre_track = (right_track + left_track) / 2
 
         elif interpolate:
-            # centre_track = np.concatenate([np.zeros((30, 2)), centre_track], axis=0)
-            # centre_track = utils.smooth_track_with_polyfit(centre_track, num_points)
             left_track = utils.smooth_track_with_polyfit(left_track, num_points)
             right_track = utils.smooth_track_with_polyfit(right_track, num_points)
+
             centre_track = (right_track + left_track) / 2
+            centre_track = np.concatenate([np.zeros((10, 2)), centre_track], axis=0)
+            centre_track = utils.smooth_track_with_polyfit(centre_track, num_points)
 
         tracks = {
             "centre": centre_track,

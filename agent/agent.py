@@ -35,6 +35,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
         self.visualiser = Visualiser(self.cfg["debugging"], self)
         self.localiser = None
+        self.localisation_obs = {}
+        self.step_count = 0
         System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
 
     def setup(self):
@@ -114,13 +116,13 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.acceleration_command = acceleration
         brake = -1 * acceleration if acceleration < 0 else 0.0
         throttle = acceleration if acceleration > 0 else 0.0
-        throttle = np.clip(throttle, 0.0, 0.60)
+        if self.pose["velocity"] < 10.0:
+            throttle = np.clip(throttle, 0.0, 0.60)
         return throttle, brake
 
     @property
     def control_command(self) -> tuple:
         steering_angle = self.pose["steering_angle"]
-        logger.info(f"Steering from game: {steering_angle}")
         acceleration = self.previous_acceleration
         velocity = self.pose["velocity"]
         return (steering_angle, acceleration, velocity)
@@ -139,10 +141,13 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def reference_speed(self) -> float:
-        reference_speed = self.MPC.v_max
+        # reference_speed = self.MPC.v_max
+        reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
         if self.localiser and self.localiser.localised:
             centre_index = self.localiser.estimated_position[1]
-            reference_speed = self.reference_speeds[centre_index]
+            speed_index = centre_index % (len(self.reference_speeds)-1)
+            reference_speed = np.min(self.reference_speeds[speed_index:speed_index+100])
+            logger.info(f"Using reference speed from localisation: {reference_speed}")
         return reference_speed
 
     def behaviour(self, observation: Dict) -> np.array:
@@ -166,7 +171,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         logger.info(
             f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
         )
-        self.MPC = build_mpc(self.cfg["mapping"]["control"], self.cfg["vehicle"])
+        self.MPC = build_mpc(self.cfg["mapping"]["control"], self.vehicle_data)
         self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self._is_mapping_setup = True
     
@@ -255,6 +260,14 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.dt = self.current_time - self.previous_time
         self.pose["velocity"] = obs["speed"]
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
+        self.game_pose = (
+            obs['full_pose']['x'], 
+            obs['full_pose']['y'], 
+            obs['full_pose']['z'], 
+            obs['full_pose']['yaw'],
+            obs['full_pose']['pitch'],
+            obs['full_pose']['roll'],
+        )
         self.tracks = obs["tracks"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
@@ -274,6 +287,20 @@ class ElTuarMPC(AssettoCorsaInterface):
                 observation=[self.left_track_detections, self.right_track_detections],
             )
             logger.info(f"Localised: {self.localiser.localised}")
+        if self.cfg["localisation"]["collect_benchmark_observations"]:
+            localisation_input = {
+                "control_command": self.control_command,
+                "dt": self.dt,
+                "observation": [self.left_track_detections, self.right_track_detections],
+                "game_pose": [self.game_pose]
+            }
+            
+            self.localisation_obs[self.step_count] = localisation_input
+
+            folder_name = self.cfg["localisation"]["benchmark_observations_save_location"]
+            np.save(f'{folder_name}/{self.cfg["experiment_name"]}.npy', self.localisation_obs)
+            
+            self.step_count += 1
 
     def _update_control(self):
         self.update_reference_speed()

@@ -1,5 +1,5 @@
 data_path: data/anglesey_84kph/datacollection
-map_path: agents/utils/our_racetracks/anglesly2.npy
+map_path: track_maps/monza_verysmooth.npy
 particle_filter:
   n_particles: 500
   n_converged_particles: 500

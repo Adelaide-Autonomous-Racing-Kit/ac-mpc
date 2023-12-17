@@ -105,9 +105,9 @@ class LocaliseOnTrack:
             in the movements
             Control input will have velocity
         """
-        logger.info(f"Control Input Before: {control_input}")
+        # logger.info(f"Control Input Before: {control_input}")
         control_input = (-self.vehicle_data.steering_angle(control_input[0]), *control_input[1:])
-        logger.info(f"Control Input After: {control_input}")
+        # logger.info(f"Control Input After: {control_input}")
         delta, velocity = self.add_noise_to_control(control_input)
         x_dot = self.calcualte_x_dot(delta, velocity)
         self.advance_particles(dt, x_dot)
@@ -205,6 +205,8 @@ class LocaliseOnTrack:
 
     @track_runtime
     def process_observation(self, observation: List[np.array]) -> np.array:
+        observation[0] = np.clip(observation[0], -200, 200)
+        observation[1] = np.clip(observation[1], 0, 400)
         map_rot = self.calculate_map_rotation()
         observations = np.concatenate(observation)
         n_points = observations.shape[0]
@@ -328,7 +330,9 @@ class LocaliseOnTrack:
         return self.sample_guassian_noise(mu, sigma, n_samples)
 
     def sample_current_particle_indices(self, n_samples: int) -> np.array:
-        weights = self.particles["score"] / np.sum(self.particles["score"])
+
+        weights = self.particles["score"] / (np.sum(self.particles["score"]))
+
         return np.random.choice(self.n_particles, size=n_samples, p=weights)
 
     def add_new_particle_states(self, new_states: np.array):

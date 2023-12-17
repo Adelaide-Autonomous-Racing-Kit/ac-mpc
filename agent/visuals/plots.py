@@ -48,22 +48,23 @@ def draw_localisation_map(agent, canvas: np.array, obs: Dict) -> np.array:
 
 def draw_control_map(agent, canvas: np.array, obs: Dict) -> np.array:
     try:
+        scale = 16
         utils.draw_track_lines_on_bev(
-            canvas, 4, [agent.centre_track_detections], colour=(0, 255, 0)
+            canvas, scale, [agent.centre_track_detections], colour=(0, 255, 0)
         )
         # logger.info("Original Center track In plot")
         # utils.draw_track_lines_on_bev(
         #    canvas, 4, [agent.original_centre_track], colour=(255, 0, 255)
         # )
         utils.draw_track_lines_on_bev(
-            canvas, 4, [agent.right_track_detections], colour=(0, 0, 255)
+            canvas, scale, [agent.right_track_detections], colour=(0, 0, 255)
         )
         utils.draw_track_lines_on_bev(
-            canvas, 4, [agent.left_track_detections], colour=(255, 0, 0)
+            canvas, scale, [agent.left_track_detections], colour=(255, 0, 0)
         )
         x, y = agent.MPC.current_prediction
         utils.draw_track_lines_on_bev(
-            canvas, 4, [np.stack([x, y], axis=0).T], colour=(255, 255, 255)
+            canvas, scale, [np.stack([x, y], axis=0).T], colour=(255, 255, 255)
         )
         canvas = cv2.flip(canvas, 0)
     except Exception as e:

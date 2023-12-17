@@ -1,4 +1,4 @@
-experiment_name: 'refactor-test'
+experiment_name: 'monza_audi'
 save_path: "data/testing"
 evaluation: True
 multithreading: False
@@ -28,9 +28,9 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/monza
+    map_path: track_maps/monza_verysmooth
     create_map: False
-    number_of_mapping_laps: 2
+    number_of_mapping_laps: 1
     control:
         horizon: 50
         speed_profile_constraints:
@@ -38,21 +38,23 @@ mapping:
             v_max: 20.0
             a_min: -3.0
             a_max: 6.0
-            ay_max: 4.0
-        step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
+            ay_max: 2.0
+        step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
-        final_cost: [0.0, 0.0, 1.0e-4] # e_y, e_psi, t
+        final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
+    collect_benchmark_observations: True
+    benchmark_observations_save_location: localisation_data
     use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
         x: 1.0
         y: 1.0
-        yaw: 1.0 # deg
+        yaw: 0.32 # rad
     control_noise:
         velocity: 0.1
-        yaw:  1.0 # deg
+        yaw:  0.087 # rad
     thresholds:
         offset: 10
         rotation: 90 # deg
@@ -67,12 +69,13 @@ localisation:
 racing:
     control:
         horizon: 50
+        unlocalised_max_speed: 32
         speed_profile_constraints:
             v_min: 5.0
-            v_max: 60
-            a_min: -0.12
+            v_max: 72
+            a_min: -0.25
             a_max: 6.0
-            ay_max: 4.0
-        step_cost: [1.0e-2, 0.0, 0.0] # e_y, e_psi, t
-        r_term: [1.0e-6, 5.0] # velocity, steering
-        final_cost: [0.0, 0.0, 1.0] # e_y, e_psi, t
+            ay_max: 6.0
+        step_cost: [3.0e-2, 1.0e-2, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-6, 10.0] # velocity, steering
+        final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t

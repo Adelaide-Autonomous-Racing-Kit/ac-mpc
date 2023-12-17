@@ -71,17 +71,17 @@ class MapMaker:
         outsides = []
         for points_at_timestep in self.outside_track:
             outsides.extend(points_at_timestep[:1, :])
-        logger.warning("Outside Track Points")
+        logger.info("Processing outside Track Points")
         outsides = MapMaker.order_points(np.array(outsides))
 
         insides = []
         for points_at_timestep in self.inside_track:
             insides.extend(points_at_timestep[:1, :])
-        logger.warning("Inside Track Points")
+        logger.info("Processing inside Track Points")
         insides = MapMaker.order_points(np.array(insides))
 
         distances = cdist(insides, outsides)
-        logger.warning("Center Track Points")
+        logger.info("Processing center Track Points")
         centres = MapMaker.order_points(
             (insides + outsides[np.argmin(distances, axis=1)]) / 2
         )
@@ -149,8 +149,8 @@ class MapMaker:
         return ordered_points
 
     @staticmethod
-    def smooth_boi(arr, i):
-        return savgol_filter([p[i] for p in arr], window_length=15, polyorder=1)
+    def smooth_boi(arr, i, window_length=15, polyorder=1):
+        return savgol_filter([p[i] for p in arr], window_length=window_length, polyorder=polyorder)
 
     @staticmethod
     def upsample_track(track, desired_density=0.5):
