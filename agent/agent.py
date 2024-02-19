@@ -146,7 +146,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.localiser and self.localiser.localised:
             centre_index = self.localiser.estimated_position[1]
             speed_index = centre_index % (len(self.reference_speeds)-1)
-            reference_speed = np.min(self.reference_speeds[speed_index:speed_index+100])
+            reference_speed = np.mean(self.reference_speeds[speed_index:speed_index+100])
             logger.info(f"Using reference speed from localisation: {reference_speed}")
         return reference_speed
 

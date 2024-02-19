@@ -2,9 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.npy
 # C extensions
 *.so
+
+localisation_data/*
 
 # Distribution / packaging
 .Python

@@ -1,7 +1,7 @@
 experiment_name: 'monza_audi'
 save_path: "data/testing"
 evaluation: True
-multithreading: False
+multithreading: True
 test: False
 seed: 0
 vehicle:
@@ -51,15 +51,15 @@ localisation:
     sampling_noise:
         x: 1.0
         y: 1.0
-        yaw: 0.32 # rad
+        yaw: 2 # degrees
     control_noise:
-        velocity: 0.1
-        yaw:  0.087 # rad
+        velocity: 2
+        yaw:  0.16 # degrees
     thresholds:
         offset: 10
         rotation: 90 # deg
         minimum_particles: 20
-        track_limit: 1.0e6
+        track_limit: 1.0e+6 
     score_distribution:
         mean: 0
         sigma: 10
@@ -76,6 +76,6 @@ racing:
             a_min: -0.25
             a_max: 6.0
             ay_max: 6.0
-        step_cost: [3.0e-2, 1.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [5.0e-2, 0.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t

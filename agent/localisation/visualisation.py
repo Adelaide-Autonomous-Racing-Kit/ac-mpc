@@ -4,7 +4,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from localisation.localisation import LocaliseOnTrack
-from localisation.localisation_bench import LocalisationTracker
+from localisation.tracker import LocalisationTracker
 
 
 class LocalisationVisualiser:
@@ -44,7 +44,8 @@ class LocalisationVisualiser:
         self.plot_local_track(self._subplot_axes["detections"], track_detections)
         self.plot_location_errors()
         self.plot_execution_time(self._subplot_axes["execution_time"])
-        plt.pause(0.1)
+        plt.draw()
+        plt.pause(0.01)
 
     @property
     def left_track(self) -> np.array:
@@ -64,14 +65,15 @@ class LocalisationVisualiser:
 
     def _setup_particle_map_visualisation_plot(self, ax: matplotlib.axes):
         ax.set_aspect(1)
-        ax.set_xlim(-300, 1400)
-        ax.set_ylim(-300, 800)
+        ax.set_xlim(-1200, 300)
+        ax.set_ylim(-1400, 1000)
         ax.set_title("Particle filter")
 
     def _draw_particles_and_map(self, ax: matplotlib.axes):
         self._draw_track_limits(ax)
         self._draw_starting_line(ax)
         self._draw_particles(ax)
+        self._draw_ground_truth_position(ax)
         self._draw_estimated_position(ax)
         self._maybe_adjust_plot_limits(ax)
 
@@ -103,6 +105,13 @@ class LocalisationVisualiser:
         dy = arrow_length * np.sin(yaw)
         ax.arrow(x, y, dx, dy, width=1, color="r")
 
+    def _draw_ground_truth_position(self, ax: matplotlib.axes):
+        arrow_length = 25
+        pose = self._tracker.current_ground_truth_pose
+        dx = arrow_length * np.cos(pose["yaw"])
+        dy = arrow_length * np.sin(pose["yaw"])
+        ax.arrow(pose["x"], pose["y"], dx, dy, width=1, color="b")
+
     def _maybe_adjust_plot_limits(self, ax: matplotlib.axes):
         if self._particle_filter.localised:
             x, y, _ = self._particle_filter.estimated_position[0]
@@ -111,7 +120,7 @@ class LocalisationVisualiser:
 
     def plot_location_pdf(self, ax: matplotlib.axes):
         x = self._particle_filter.particles["observation_error"]
-        y = self._particle_filter.pdf(x) / self._particle_filter.scale
+        y = self._particle_filter.pdf(np.copy(x)) / self._particle_filter.scale
         ax.plot(x, y, label="offset_pdf")
 
     # def plot_orientation_pdf():
