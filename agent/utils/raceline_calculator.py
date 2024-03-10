@@ -41,7 +41,6 @@ def print_border(ax, waypoints, inner_border_waypoints, outer_border_waypoints):
 
 
 def menger_curvature(pt1, pt2, pt3, atol=1e-3):
-
     vec21 = np.array([pt1[0] - pt2[0], pt1[1] - pt2[1]])
     vec23 = np.array([pt3[0] - pt2[0], pt3[1] - pt2[1]])
 
@@ -134,18 +133,17 @@ def calculate_raceline(track_path):
     """
     Track should have centreline, left and right track points
     """
-    folder = track_path.split("/")[:-1]
-    folder = os.path.join(*folder)
-    with open(track_path, "rb") as handle:
-        track_dict = json.load(handle)
+    # folder = track_path.split("/")[:-1]
+    # folder = os.path.join(*folder)
+    # with open(track_path, "rb") as handle:
+    #    track_dict = json.load(handle)
 
-    left_track = np.array(track_dict["Outside"])[1::4]
-    right_track = np.array(track_dict["Inside"])[1::4]
-    centre_track = np.array(track_dict["Centre"])[1::4]
+    track_dict = np.load("track_maps/monza_verysmooth.npy", allow_pickle=True).item()
+
+    left_track = track_dict["outside_track"][1::16]
+    right_track = track_dict["inside_track"][1::16]
+    centre_track = track_dict["centre_track"][1::16]
     l_center_line = LineString(centre_track)
-    l_inner_border = LineString(right_track)
-    l_outer_border = LineString(left_track)
-    road_poly = Polygon(np.vstack((l_outer_border, np.flipud(l_inner_border))))
     print("Is loop/ring? ", l_center_line.is_ring)
 
     fig = plt.figure(1, figsize=(16, 10))
@@ -164,7 +162,7 @@ def calculate_raceline(track_path):
     for i in tqdm(range(LINE_ITERATIONS)):
         race_line = improve_race_line(race_line, right_track, left_track)
         if i % 100 == 0:
-            npy_fname = f"{folder}/Thruxton-{i}.npy"
+            # npy_fname = f"{folder}/Thruxton-{i}.npy"
             loop_race_line = np.append(race_line, [race_line[0]], axis=0)
             raceline_dictionary = {
                 "centre": centre_track,
@@ -172,7 +170,7 @@ def calculate_raceline(track_path):
                 "outside": left_track,
                 "inside": right_track,
             }
-            np.save(npy_fname, raceline_dictionary)
+            # np.save(npy_fname, raceline_dictionary)
 
     # need to put duplicate point race_line[0] at race_line[-1] to make a closed loops
     loop_race_line = np.append(race_line, [race_line[0]], axis=0)
@@ -182,15 +180,15 @@ def calculate_raceline(track_path):
     print("Original centerline length: %0.2f" % l_center_line.length)
     print("New race line length: %0.2f" % LineString(loop_race_line).length)
 
-    prefix = f"{folder}/Thruxton-{LINE_ITERATIONS}"
+    prefix = f"track_maps/monza_verysmooth-{LINE_ITERATIONS}"
     npy_fname = prefix + ".npy"
 
     print("Writing numpy binary to %s" % npy_fname)
     raceline_dictionary = {
-        "centre": centre_track,
+        "centre": track_dict["centre_track"],
         "raceline": loop_race_line,
-        "outside": left_track,
-        "inside": right_track,
+        "outside": track_dict["outside_track"],
+        "inside": track_dict["inside_track"],
     }
     np.save(npy_fname, raceline_dictionary)
 

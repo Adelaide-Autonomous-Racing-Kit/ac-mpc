@@ -105,7 +105,10 @@ class LocaliseOnTrack:
             in the movements
             Control input will have velocity
         """
-        control_input = (-self.vehicle_data.steering_angle(control_input[0]), *control_input[1:])
+        control_input = (
+            -self.vehicle_data.steering_angle(control_input[0]),
+            *control_input[1:],
+        )
         delta, velocity = self.add_noise_to_control(control_input)
         x_dot = self.calcualte_x_dot(delta, velocity)
         self.advance_particles(dt, x_dot)
@@ -203,10 +206,10 @@ class LocaliseOnTrack:
 
     @track_runtime
     def process_observation(self, observation: List[np.array]) -> np.array:
-        #observation[0][:, 0] = np.clip(observation[0][:, 0], -200, 200)
-        #observation[0][:, 1] = np.clip(observation[0][:, 1], 0, 50)
-        #observation[1][:, 0] = np.clip(observation[1][:, 0], -200, 200)
-        #observation[1][:, 1] = np.clip(observation[1][:, 1], 0, 50)
+        # observation[0][:, 0] = np.clip(observation[0][:, 0], -200, 200)
+        # observation[0][:, 1] = np.clip(observation[0][:, 1], 0, 50)
+        # observation[1][:, 0] = np.clip(observation[1][:, 0], -200, 200)
+        # observation[1][:, 1] = np.clip(observation[1][:, 1], 0, 50)
         observation[0] = observation[0][observation[0][:, 1] < 50]
         observation[1] = observation[1][observation[1][:, 1] < 50]
         map_rot = self.calculate_map_rotation()
@@ -333,7 +336,6 @@ class LocaliseOnTrack:
     def sample_current_particle_indices(self, n_samples: int) -> np.array:
 
         weights = self.particles["score"] / (np.sum(self.particles["score"]))
-        logger.debug(weights)
         return np.random.choice(self.n_particles, size=n_samples, p=weights)
 
     def add_new_particle_states(self, new_states: np.array):

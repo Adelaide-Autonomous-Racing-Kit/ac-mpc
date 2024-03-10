@@ -5,7 +5,9 @@ from map_maker import MapMaker
 
 if __name__ == "__main__":
     # track_dict = np.load("../../track_maps/monza.npy", allow_pickle=True).item()
-    track_dict = np.load("../../track_maps/monza_verysmooth.npy", allow_pickle=True).item()
+    track_dict = np.load(
+        "../../track_maps/monza_verysmooth.npy", allow_pickle=True
+    ).item()
 
     outside = track_dict.get("outside_track")
     inside = track_dict.get("inside_track")
@@ -67,5 +69,5 @@ if __name__ == "__main__":
 
     ax.set_aspect(1)
     plt.gray()
-    plt.show()
     plt.savefig("monza.png")
+    plt.show()
