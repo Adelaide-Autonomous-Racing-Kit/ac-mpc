@@ -1,8 +1,10 @@
-import pathlib
 import threading
 import time
 from typing import Dict, List
 from concurrent.futures import ThreadPoolExecutor
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
 import numpy as np
 import torch
@@ -99,7 +101,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         raw_acceleration = self._calculate_acceleration(desired_velocity)
         throttle, brake = self._calculate_commands(raw_acceleration)
         return np.array([steering_angle, brake, throttle])
-    
+
     def _process_yaw(self, yaw: float) -> float:
         max_steering_angle = self.MPC.delta_max
         steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
@@ -145,8 +147,10 @@ class ElTuarMPC(AssettoCorsaInterface):
         reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
         if self.localiser and self.localiser.localised:
             centre_index = self.localiser.estimated_position[1]
-            speed_index = centre_index % (len(self.reference_speeds)-1)
-            reference_speed = np.min(self.reference_speeds[speed_index:speed_index+100])
+            speed_index = centre_index % (len(self.reference_speeds) - 1)
+            reference_speed = np.mean(
+                self.reference_speeds[speed_index : speed_index + 100]
+            )
             logger.info(f"Using reference speed from localisation: {reference_speed}")
         return reference_speed
 
@@ -162,11 +166,11 @@ class ElTuarMPC(AssettoCorsaInterface):
     @property
     def _is_mapping(self) -> bool:
         return self.cfg["mapping"]["create_map"] and not self.mapper.map_built
-    
+
     def _maybe_setup_mapping(self):
         if not self._is_mapping_setup:
             self._setup_mapping()
-    
+
     def _setup_mapping(self):
         logger.info(
             f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
@@ -174,16 +178,16 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.MPC = build_mpc(self.cfg["mapping"]["control"], self.vehicle_data)
         self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self._is_mapping_setup = True
-    
+
     def _is_mapping_laps_completed(self, observation: Dict) -> bool:
         n_laps_completed = observation["state"]["completed_laps"]
-        return n_laps_completed >= self.cfg['mapping']['number_of_mapping_laps']
+        return n_laps_completed >= self.cfg["mapping"]["number_of_mapping_laps"]
 
     def _finalise_mapping(self, observation: Dict) -> np.array:
         if self._is_car_stopped(observation):
             self._create_map()
         return np.array([0.0, 1.0, 0.0])
-    
+
     def _is_car_stopped(self, observation) -> bool:
         return observation["state"]["speed_kmh"] <= 1
 
@@ -192,17 +196,16 @@ class ElTuarMPC(AssettoCorsaInterface):
         Post-process and save map
         """
         self.mapper.save_map(filename=self.cfg["mapping"]["map_path"])
-    
+
     def _maybe_setup_racing(self):
         if not self._is_racing_setup:
             self._setup_racing()
-    
+
     def _setup_racing(self):
         self.MPC = build_mpc(self.cfg["racing"]["control"], self.vehicle_data)
         self.command_interpolator = TemporalCommandInterpolator(self.MPC)
         self._load_model()
         self._is_racing_setup = True
-
 
     def select_action(self, obs) -> np.array:
         """
@@ -261,12 +264,12 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.pose["velocity"] = obs["speed"]
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
         self.game_pose = (
-            obs['full_pose']['x'], 
-            obs['full_pose']['y'], 
-            obs['full_pose']['z'], 
-            obs['full_pose']['yaw'],
-            obs['full_pose']['pitch'],
-            obs['full_pose']['roll'],
+            obs["full_pose"]["x"],
+            obs["full_pose"]["y"],
+            obs["full_pose"]["z"],
+            obs["full_pose"]["yaw"],
+            obs["full_pose"]["pitch"],
+            obs["full_pose"]["roll"],
         )
         self.tracks = obs["tracks"]
 
@@ -291,15 +294,23 @@ class ElTuarMPC(AssettoCorsaInterface):
             localisation_input = {
                 "control_command": self.control_command,
                 "dt": self.dt,
-                "observation": [self.left_track_detections, self.right_track_detections],
-                "game_pose": [self.game_pose]
+                "observation": [
+                    self.left_track_detections,
+                    self.right_track_detections,
+                ],
+                "game_pose": [self.game_pose],
             }
-            
+
             self.localisation_obs[self.step_count] = localisation_input
 
-            folder_name = self.cfg["localisation"]["benchmark_observations_save_location"]
-            np.save(f'{folder_name}/{self.cfg["experiment_name"]}.npy', self.localisation_obs)
-            
+            folder_name = self.cfg["localisation"][
+                "benchmark_observations_save_location"
+            ]
+            np.save(
+                f'{folder_name}/{self.cfg["experiment_name"]}.npy',
+                self.localisation_obs,
+            )
+
             self.step_count += 1
 
     def _update_control(self):
@@ -354,7 +365,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         )
         return tracks
 
-
     def register_reset(self, obs) -> np.array:
         """
         Same input/output as select_action, except this method is called at episodal reset.
@@ -370,13 +380,12 @@ class ElTuarMPC(AssettoCorsaInterface):
 
         # Remove near duplicate centre points
         d = np.diff(tracks["centre"], axis=0)
-        dists = np.hypot(d[:,0], d[:,1])
+        dists = np.hypot(d[:, 0], d[:, 1])
         is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
         is_not_duplicated[1:] = dists > 0.0001
         tracks["left"] = tracks["left"][is_not_duplicated]
         tracks["right"] = tracks["right"][is_not_duplicated]
         tracks["centre"] = tracks["centre"][is_not_duplicated]
-
 
         self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
@@ -388,7 +397,6 @@ class ElTuarMPC(AssettoCorsaInterface):
                 self.cfg["localisation"],
             )
         self.mapper.map_built = True
-
 
     def _calculate_speed_profile(self, centre_track):
         road_width = 9.5
@@ -403,11 +411,29 @@ class ElTuarMPC(AssettoCorsaInterface):
         reference_path = self.MPC.construct_waypoints(centre_track)
         for waypoint in reference_path:
             if 0.001 > waypoint["dist_ahead"] > -0.001:
-                logger.info(f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})")
+                logger.info(
+                    f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})"
+                )
         reference_path = self.MPC.compute_speed_profile(reference_path)
 
         plot_ref_path = np.array(
             [[val["x"], val["y"], val["v_ref"]] for i, val in enumerate(reference_path)]
         ).T
-
+        self._plot_speed_profile(plot_ref_path)
         self.reference_speeds = savgol_filter(plot_ref_path[2], 21, 3)
+
+    def _plot_speed_profile(self, ref_path: np.array):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        sp = ax.scatter(
+            ref_path[0, :],
+            ref_path[1, :],
+            c=ref_path[2, :] * 3.6,  # / ref_path[2, :].max(),
+            cmap=plt.get_cmap("plasma"),
+            edgecolor="none",
+        )
+        ax.set_aspect(1)
+        plt.gray()
+        fig.colorbar(sp)
+        # plt.show()
+        plt.savefig("monza_speed.png")
