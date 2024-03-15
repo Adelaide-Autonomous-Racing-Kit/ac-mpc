@@ -1,0 +1,81 @@
+experiment_name: 'spa_audi'
+save_path: "data/testing"
+evaluation: True
+multithreading: False
+test: False
+seed: 0
+vehicle:
+    data_path: "data/audi_r8_lms_2016"
+debugging:
+    birds_eye_view_scale: 4
+    birds_eye_view_size: 200
+    show_camera: True
+    show_control_image: True
+    show_localisation_map: True
+    show_segmentation: True
+    show_visualised_predictions: True
+    verbose: True
+data_collection:
+    collect_images: 0
+perception:
+    model_segmentation: True
+    model_path: "agent/models/checkpoints/spa-fpn-resnet-18-v1.pt"
+    single_cam: True
+    image_width: 1280
+    image_height: 736
+    centerline_from_tack_limits: False
+    vertical_fov_deg: 60
+    position: [0.0, 1.45000, 0.56000]
+    pitch_deg: 2.889419
+mapping:
+    map_path: track_maps/spa
+    create_map: True
+    number_of_mapping_laps: 2
+    control:
+        horizon: 50
+        speed_profile_constraints:
+            v_min: 5.0
+            v_max: 20.0
+            a_min: -3.0
+            a_max: 6.0
+            ay_max: 2.0
+        step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-6, 1.0e+1] # velocity, steering
+        final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
+localisation:
+    collect_benchmark_observations: False
+    benchmark_observations_save_location: localisation_data
+    use_localisation: True
+    n_particles: 500
+    n_converged_particles: 500
+    sampling_noise:
+        x: 1.0
+        y: 1.0
+        yaw: 2 # degrees
+    control_noise:
+        velocity: 2
+        yaw:  0.16 # degrees
+    thresholds:
+        offset: 10
+        rotation: 90 # deg
+        minimum_particles: 20
+        track_limit: 1.0e+6 
+    score_distribution:
+        mean: 0
+        sigma: 10
+    convergence_criteria:
+        maximum_distance: 50
+        maximum_angle: 90 # deg
+racing:
+    control:
+        horizon: 50
+        unlocalised_max_speed: 32
+        speed_profile_constraints:
+            v_min: 5.0
+            v_max: 72
+            a_min: -0.25
+            a_max: 6.0
+            ay_max: 6.0
+        step_cost: [5.0e-2, 0.0e-2, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-6, 10.0] # velocity, steering
+        final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t

@@ -4,13 +4,12 @@ from typing import Dict, List
 from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
-from matplotlib import cm
 
 import numpy as np
 import torch
 from loguru import logger
 from scipy.signal import savgol_filter
-from src.interface import AssettoCorsaInterface
+from aci.interface import AssettoCorsaInterface
 
 from ace.steering import SteeringGeometry
 from control.controller import build_mpc
@@ -29,7 +28,7 @@ torch.backends.cudnn.benchmark = True
 class ElTuarMPC(AssettoCorsaInterface):
     def __init__(self):
         super().__init__()
-        self.cfg = load.yaml("agent/configs/params.yaml")
+        self.cfg = load.yaml("agent/configs/spa.yaml")
         self.setup()
         self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
         self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])

@@ -64,23 +64,10 @@ class TrackSegmenter:
                 f"Device name: {torch.cuda.get_device_name(0)} "
                 f"Max memory: {torch.cuda.get_device_properties(0).total_memory/1e9:.2f}GB"
             )
-        # model = EfficientNetV2_FPN_Segmentation(
-        #    version="efficientnet_v2_s", im_c=3, n_classes=2
-        # ).to(self.device)
-
-        # encoder = resnet.ResnetEncoder(resnet.build("18", False), 16)
-        # model = deeplabv3plus.DeepLabV3plus(encoder, 10).to(self.device)
-
-        model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10).to(
-            self.device
-        )
-        modified_state_dict = {}
-        state_dict = torch.load(path)["state_dict"]
-        for key in state_dict.keys():
-            modified_state_dict[key.replace("_model.", "")] = state_dict[key]
-        model.load_state_dict(modified_state_dict)
+        model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10)
+        model.load_state_dict(torch.load(path))
         model.eval()
-        return model
+        return model.to(self.device)
 
     def add_inferred_segmentation_masks(self, obs: Dict):
         images = obs.get_images()
@@ -99,11 +86,5 @@ class TrackSegmenter:
         output = self.model.predict(x)
         output = torch.argmax(output, dim=1).cpu().numpy().astype(np.uint8)
         vis = np.squeeze(np.array(COLOUR_LIST[output], dtype=np.uint8))
-        # FPN v2
-        # output[output != 0] = 1
-        # output[output == 0] = 2
-        # output -= 1
-        # output[output != 1] = 0
-        # FPN v3
         output[output > 1] = 0
         return output, vis
