@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List
 
 import numpy as np
-
+from loguru import logger
 
 class TemporalCommandInterpolator:
     def __init__(self, mpc: SpatialMPC):
@@ -61,3 +61,33 @@ class TemporalCommandInterpolator:
         portion_a = (x_b - elapsed_time) / (x_b - x_a)
         portion_b = (elapsed_time - x_a) / (x_b - x_a)
         return y_a * portion_a + y_b * portion_b
+
+class TemporalCommandSelector:
+    def __init__(self, mpc: SpatialMPC):
+        self._MPC = mpc
+    
+    @property
+    def _cum_time(self) -> np.array:
+        return self._MPC.cum_time
+    
+    @property
+    def _commands(self) -> np.array:
+        return self._MPC.projected_control.T
+    
+    def __call__(self, elapsed_time: float) -> np.array:
+        return self.get_command(elapsed_time)
+        
+    def get_command(self, elapsed_time: float) -> np.array:
+        index = self._get_closet_command_index(elapsed_time)
+        command = self._commands[index]
+        return command
+
+    def _get_closet_command_index(self, elapsed_time: float) -> int:
+        distances = self._calculate_temporal_distances(elapsed_time)
+        index = np.argmin(abs(distances))
+        if distances[index] > 0:
+            index - 1
+        return index
+
+    def _calculate_temporal_distances(self, elapsed_time: float) -> np.array:
+        return self._cum_time - elapsed_time

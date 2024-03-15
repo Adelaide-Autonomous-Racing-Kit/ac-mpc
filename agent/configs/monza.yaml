@@ -10,9 +10,9 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     show_camera: False
-    show_control_image: True
-    show_localisation_map: True
-    show_segmentation: True
+    show_control_image: False
+    show_localisation_map: False
+    show_segmentation: False
     show_visualised_predictions: False
     verbose: True
 data_collection:

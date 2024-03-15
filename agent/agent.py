@@ -13,7 +13,7 @@ from aci.interface import AssettoCorsaInterface
 
 from ace.steering import SteeringGeometry
 from control.controller import build_mpc
-from control.commands import TemporalCommandInterpolator
+from control.commands import TemporalCommandInterpolator, TemporalCommandSelector
 from localisation.localisation import LocaliseOnTrack
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
@@ -28,7 +28,7 @@ torch.backends.cudnn.benchmark = True
 class ElTuarMPC(AssettoCorsaInterface):
     def __init__(self):
         super().__init__()
-        self.cfg = load.yaml("agent/configs/spa.yaml")
+        self.cfg = load.yaml("agent/configs/monza.yaml")
         self.setup()
         self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
         self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])
@@ -175,7 +175,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
         )
         self.MPC = build_mpc(self.cfg["mapping"]["control"], self.vehicle_data)
-        self.command_interpolator = TemporalCommandInterpolator(self.MPC)
+        self.command_interpolator = TemporalCommandSelector(self.MPC)
         self._is_mapping_setup = True
 
     def _is_mapping_laps_completed(self, observation: Dict) -> bool:
@@ -202,7 +202,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _setup_racing(self):
         self.MPC = build_mpc(self.cfg["racing"]["control"], self.vehicle_data)
-        self.command_interpolator = TemporalCommandInterpolator(self.MPC)
+        self.command_interpolator = TemporalCommandSelector(self.MPC)
         self._load_model()
         self._is_racing_setup = True
 

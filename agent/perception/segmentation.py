@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Dict
 
 import numpy as np
@@ -6,9 +7,6 @@ import torch
 from loguru import logger
 import segmentation_models_pytorch as smp
 
-
-from models.efficientnet_v2 import EfficientNetV2_FPN_Segmentation
-from models.deeplab import resnet, deeplabv3plus
 from monitor.system_monitor import track_runtime
 
 # V2 FPN
@@ -47,9 +45,9 @@ COLOUR_LIST = np.array(
 
 class TrackSegmenter:
     def __init__(self, cfg: Dict):
-        self.model = self.load_segmentation_model(cfg["model_path"])
+        self.model = self.load_segmentation_model(cfg)
 
-    def load_segmentation_model(self, path):
+    def load_segmentation_model(self, cfg: Dict):
         """
         Load model checkpoints.
         """
@@ -65,9 +63,13 @@ class TrackSegmenter:
                 f"Max memory: {torch.cuda.get_device_properties(0).total_memory/1e9:.2f}GB"
             )
         model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10)
-        model.load_state_dict(torch.load(path))
+        model.load_state_dict(torch.load(cfg["model_path"]))
         model.eval()
-        return model.to(self.device)
+        model.to(self.device)
+        #model = torch.compile(model, mode="reduce-overhead")
+        #dummy_input = torch.randn(1, 3, cfg["image_height"], cfg["image_width"], device=self.device)
+        #model(dummy_input)
+        return model
 
     def add_inferred_segmentation_masks(self, obs: Dict):
         images = obs.get_images()
@@ -83,6 +85,7 @@ class TrackSegmenter:
 
     @track_runtime
     def segment_drivable_area(self, x: torch.Tensor) -> np.array:
+        before = time.time()
         output = self.model.predict(x)
         output = torch.argmax(output, dim=1).cpu().numpy().astype(np.uint8)
         vis = np.squeeze(np.array(COLOUR_LIST[output], dtype=np.uint8))
