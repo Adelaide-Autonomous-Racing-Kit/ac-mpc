@@ -13,7 +13,7 @@ from aci.interface import AssettoCorsaInterface
 
 from ace.steering import SteeringGeometry
 from control.controller import build_mpc
-from control.commands import TemporalCommandInterpolator, TemporalCommandSelector
+from control.commands import TemporalCommandSelector
 from localisation.localisation import LocaliseOnTrack
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
@@ -142,7 +142,6 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def reference_speed(self) -> float:
-        # reference_speed = self.MPC.v_max
         reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
         if self.localiser and self.localiser.localised:
             centre_index = self.localiser.estimated_position[1]
@@ -244,7 +243,8 @@ class ElTuarMPC(AssettoCorsaInterface):
     def update_control(self, obs):
         self.update_control_state()
         obs = self.perception.perceive(obs)
-        self._step(obs)
+        if "tracks" in obs:
+            self._step(obs)
 
     def update_control_state(self):
         self.update_time_stamps()

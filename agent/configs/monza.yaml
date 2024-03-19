@@ -10,7 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     show_camera: False
-    show_control_image: False
+    show_control_image: True
     show_localisation_map: False
     show_segmentation: False
     show_visualised_predictions: False
@@ -21,6 +21,7 @@ perception:
     model_segmentation: True
     model_path: "agent/models/checkpoints/monza-fpn-resnet-18-v1.pt"
     single_cam: True
+    compile_model: False
     image_width: 1280
     image_height: 736
     centerline_from_tack_limits: False
@@ -76,6 +77,6 @@ racing:
             a_min: -0.25
             a_max: 6.0
             ay_max: 6.0
-        step_cost: [5.0e-2, 0.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [2.5e-1, 0.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t

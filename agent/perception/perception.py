@@ -9,7 +9,7 @@ from turbojpeg import TJPF_BGRX, TurboJPEG
 
 TURBO_JPEG = TurboJPEG()
 
-from perception.segmentation import TrackSegmenter
+from perception.segmentation import TrackSegmenter, TrackSegmentorProcess
 from perception.tracks import TrackLimitPerception
 from perception.observations import ObservationDict
 
@@ -18,20 +18,25 @@ class Perceiver:
     def __init__(self, agent, cfg: Dict, test: bool = False):
         self.agent = agent
         self.cfg = cfg
-        self.track_segmenter = TrackSegmenter(cfg)
+        self.track_segmenter = TrackSegmentorProcess(cfg)
         self.track_limit_exctractor = TrackLimitPerception(cfg, test)
         self.image_width = cfg["image_width"]
         self.image_height = cfg["image_height"]
+        self.track_segmenter.start()
 
     def perceive(self, obs: List):
         output = self.preprocess_observations(obs)
-        self.add_track_limits(output)
+        if "CameraFrontSegm" in output:
+            self.add_track_limits(output)
         return output
 
     def preprocess_observations(self, obs: List) -> Dict:
         output_obs = ObservationDict(obs)
         self.assert_image_size_is_correct(output_obs)
-        self.track_segmenter.add_inferred_segmentation_masks(output_obs)
+        self.track_segmenter.input_image = output_obs["CameraFrontRGB"]
+        if not self.track_segmenter.is_mask_stale:
+            mask = self.track_segmenter.output_mask
+            output_obs["CameraFrontSegm"] = mask[0]
         self.agent._maybe_draw_visualisations(output_obs)
         return output_obs
 

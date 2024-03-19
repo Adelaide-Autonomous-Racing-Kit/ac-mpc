@@ -64,6 +64,11 @@ class LocaliseOnTrack:
         weights = self.particles["score"].reshape(-1, 1)
         locations = self.particles["state"][:, :3]
         estimated_location = sum(locations * weights) / sum(weights)
+        if any(np.isnan(estimated_location)):
+            n_particles = self.particles["score"].shape
+            weights = np.ones(n_particles) / n_particles[0]
+            weights = weights.reshape(-1, 1)
+            estimated_location = sum(locations * weights) / sum(weights)
         _, indexes = self._find_closest_points_to_particles(estimated_location[:2])
         centre_idx, left_idx, right_idx = indexes[0], indexes[1], indexes[2]
         return estimated_location, centre_idx, left_idx, right_idx
@@ -334,8 +339,10 @@ class LocaliseOnTrack:
         return self.sample_guassian_noise(mu, sigma, n_samples)
 
     def sample_current_particle_indices(self, n_samples: int) -> np.array:
-
-        weights = self.particles["score"] / (np.sum(self.particles["score"]))
+        weights = self.particles["score"] / np.sum(self.particles["score"])
+        if any(np.isnan(weights)):
+            n_particles = self.particles["score"].shape
+            weights = np.ones(n_particles) / n_particles[0]
         return np.random.choice(self.n_particles, size=n_samples, p=weights)
 
     def add_new_particle_states(self, new_states: np.array):
