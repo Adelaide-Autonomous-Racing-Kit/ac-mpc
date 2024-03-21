@@ -109,10 +109,16 @@ def smooth_track_with_polyfit(track, num_points, degree=3):
         xnew = np.linspace(0, 0.1, num_points)
         ynew = np.linspace(0, 2, num_points)
         return np.array([xnew, ynew]).T
-    ynew = np.linspace(0, np.max(track[:, 1]), num_points)
+    ynew = np.linspace(0, np.max(track[:, 1]), 500)
     coeffs = np.polyfit(track[:, 1], track[:, 0], degree)
     xnew = np.polyval(coeffs, ynew)
+    newpoints = np.array([xnew, ynew]).T
+    start_index = np.argmin(np.linalg.norm(newpoints, axis=1))
+    ynew = np.linspace(ynew[start_index], np.max(track[:, 1]), num_points)
+    xnew = np.polyval(coeffs, ynew)
     return np.array([xnew, ynew]).T
+    
+    
 
 
 def smooth_track_with_spline(track, num_points, smooth_factor=1e4):

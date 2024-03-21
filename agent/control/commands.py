@@ -79,7 +79,9 @@ class TemporalCommandSelector:
         
     def get_command(self, elapsed_time: float) -> np.array:
         index = self._get_closet_command_index(elapsed_time)
+        index = index if index < len(self._commands) else len(self._commands) -1
         command = self._commands[index]
+        logger.error(f"Time index: {index}")
         return command
 
     def _get_closet_command_index(self, elapsed_time: float) -> int:

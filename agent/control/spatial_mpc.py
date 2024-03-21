@@ -407,7 +407,7 @@ class SpatialMPC:
             self.current_prediction = self.update_prediction(x, self.reference_path)
 
             self.times = np.diff(x[:, 2])
-            self.cum_time = np.cumsum(self.times)
+            self.cum_time = x[:, 2]
 
             self.accelerations = np.diff(x[:, 0]) / self.times
             self.steer_rates = np.diff(x[:, 1]) / self.times

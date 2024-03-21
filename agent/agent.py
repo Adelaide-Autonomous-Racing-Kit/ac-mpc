@@ -46,7 +46,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.seed_packages()
 
     def setup_state(self):
+        self.update_timestamp = time.time()
         self.last_update_timestamp = time.time()
+        self.next_update_timestamp = time.time()
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0
@@ -99,6 +101,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         steering_angle = self._process_yaw(desired_yaw)
         raw_acceleration = self._calculate_acceleration(desired_velocity)
         throttle, brake = self._calculate_commands(raw_acceleration)
+        logger.error(time_since_update)
         return np.array([steering_angle, brake, throttle])
 
     def _process_yaw(self, yaw: float) -> float:
@@ -213,6 +216,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             action should be in the form of [\delta, b, t], where \delta is the normalised steering angle,
             t is the normalised throttle and b is normalised brake.
         """
+        self.update_time_stamp = time.time()
         if self.thread_exception is not None:
             logger.warning(f"Thread Exception Thrown: {self.thread_exception}")
 
@@ -227,6 +231,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             + state["velocity_z"] ** 2
         )
         controls = self.control_input
+        logger.error(controls)
         System_Monitor.log_select_action(speed)
         return controls
 
@@ -244,6 +249,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.update_control_state()
         obs = self.perception.perceive(obs)
         if "tracks" in obs:
+            self.next_update_timestamp = self.update_time_stamp
             self._step(obs)
 
     def update_control_state(self):
@@ -325,7 +331,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def maybe_reset_last_update_timestamp(self):
         if self.MPC.infeasibility_counter == 0:
             with self.last_update_timestamp_lock:
-                self.last_update_timestamp = time.time()
+                self.last_update_timestamp = self.next_update_timestamp
 
     @track_runtime
     def _step(self, obs):

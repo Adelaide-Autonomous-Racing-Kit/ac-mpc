@@ -23,7 +23,7 @@ def build_mpc(control_cfg: Dict, vehicle_data):
         "umax": np.array([v_max, np.tan(delta_max) / wheel_base]),
     }
     StateConstraints = {
-        "xmin": np.array([-np.inf, -np.inf, -np.inf]),
+        "xmin": np.array([-np.inf, -np.inf, 0.01]),
         "xmax": np.array([np.inf, np.inf, np.inf]),
     }
 
