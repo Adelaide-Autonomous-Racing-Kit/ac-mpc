@@ -9,10 +9,10 @@ import numpy as np
 import torch
 from loguru import logger
 from scipy.signal import savgol_filter
+from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
 
-from ace.steering import SteeringGeometry
-from control.controller import build_mpc
+from control.controller import Controller
 from control.commands import TemporalCommandSelector
 from localisation.localisation import LocaliseOnTrack
 from mapping.map_maker import MapMaker
@@ -31,7 +31,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.cfg = load.yaml("agent/configs/monza.yaml")
         self.setup()
         self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
-        self.perception = Perceiver(self, self.cfg["perception"], self.cfg["test"])
+        self.perception = Perceiver(self.cfg["perception"])
+        self.controller = Controller(self.cfg, self.perception)
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
         # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
         self.visualiser = Visualiser(self.cfg["debugging"], self)
@@ -82,7 +83,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def previous_steering_angle(self) -> float:
-        return self.previous_steering_command * self.MPC.delta_max
+        return self.previous_steering_command * self.controller.delta_max
 
     @property
     def previous_acceleration(self) -> float:
@@ -95,23 +96,20 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     @property
     def control_input(self) -> np.array:
-        with self.last_update_timestamp_lock:
-            time_since_update = time.time() - self.last_update_timestamp
-        desired_velocity, desired_yaw = self.command_interpolator(time_since_update)
+        desired_velocity, desired_yaw = self.controller.desired_state
         steering_angle = self._process_yaw(desired_yaw)
         raw_acceleration = self._calculate_acceleration(desired_velocity)
         throttle, brake = self._calculate_commands(raw_acceleration)
-        logger.error(time_since_update)
         return np.array([steering_angle, brake, throttle])
 
     def _process_yaw(self, yaw: float) -> float:
-        max_steering_angle = self.MPC.delta_max
+        max_steering_angle = self.controller.delta_max
         steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
         self.steering_command = steering_angle
         return steering_angle
 
     def _calculate_acceleration(self, desired_velocity: float) -> float:
-        max_acceleration = self.MPC.SpeedProfileConstraints["a_max"]
+        max_acceleration = self.controller.a_max
         target = (desired_velocity - self.pose["velocity"]) / 4
         return np.clip(target, -1.0, max_acceleration)
 
@@ -130,18 +128,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         acceleration = self.previous_acceleration
         velocity = self.pose["velocity"]
         return (steering_angle, acceleration, velocity)
-
-    @property
-    def reference_path(self) -> np.array:
-        ds = int(len(self.centre_track_detections) / self.MPC.MPC_horizon)
-        reference_path = np.stack(
-            [
-                self.centre_track_detections[0::ds, 0],
-                self.centre_track_detections[0::ds, 1],
-                np.linspace(10.0, 6.0, self.MPC.MPC_horizon),
-            ]
-        ).T
-        return reference_path
 
     @property
     def reference_speed(self) -> float:
@@ -176,8 +162,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         logger.info(
             f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
         )
-        self.MPC = build_mpc(self.cfg["mapping"]["control"], self.vehicle_data)
-        self.command_interpolator = TemporalCommandSelector(self.MPC)
         self._is_mapping_setup = True
 
     def _is_mapping_laps_completed(self, observation: Dict) -> bool:
@@ -203,8 +187,6 @@ class ElTuarMPC(AssettoCorsaInterface):
             self._setup_racing()
 
     def _setup_racing(self):
-        self.MPC = build_mpc(self.cfg["racing"]["control"], self.vehicle_data)
-        self.command_interpolator = TemporalCommandSelector(self.MPC)
         self._load_model()
         self._is_racing_setup = True
 
@@ -249,7 +231,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.update_control_state()
         obs = self.perception.perceive(obs)
         if "tracks" in obs:
-            self.next_update_timestamp = self.update_time_stamp
             self._step(obs)
 
     def update_control_state(self):
@@ -318,27 +299,11 @@ class ElTuarMPC(AssettoCorsaInterface):
 
             self.step_count += 1
 
-    def _update_control(self):
-        self.update_reference_speed()
-        self.MPC.get_control(self.reference_path)
-        self.maybe_reset_last_update_timestamp()
-
-    def update_reference_speed(self):
-        self.MPC.SpeedProfileConstraints["v_max"] = self.reference_speed
-        # reference_speed = self.MPC.SpeedProfileConstraints["v_max"]
-        # logger.info(f"Using Reference speed {reference_speed:.2f}")
-
-    def maybe_reset_last_update_timestamp(self):
-        if self.MPC.infeasibility_counter == 0:
-            with self.last_update_timestamp_lock:
-                self.last_update_timestamp = self.next_update_timestamp
-
     @track_runtime
     def _step(self, obs):
         self._update_state(obs)
         self._maybe_add_observations_to_map(obs)
         self._maybe_update_localisation()
-        self._update_control()
         # self._maybe_record_data(obs)
         self._maybe_draw_visualisations(obs)
 
@@ -413,13 +378,13 @@ class ElTuarMPC(AssettoCorsaInterface):
                 (np.ones(len(centre_track)) * road_width),
             ]
         ).T
-        reference_path = self.MPC.construct_waypoints(centre_track)
+        reference_path = self.controller.construct_waypoints(centre_track)
         for waypoint in reference_path:
             if 0.001 > waypoint["dist_ahead"] > -0.001:
                 logger.info(
                     f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})"
                 )
-        reference_path = self.MPC.compute_speed_profile(reference_path)
+        reference_path = self.controller.compute_speed_profile(reference_path)
 
         plot_ref_path = np.array(
             [[val["x"], val["y"], val["v_ref"]] for i, val in enumerate(reference_path)]

@@ -10,7 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     show_camera: False
-    show_control_image: True
+    show_control_image: False
     show_localisation_map: False
     show_segmentation: False
     show_visualised_predictions: False
@@ -24,6 +24,8 @@ perception:
     compile_model: False
     image_width: 1280
     image_height: 736
+    n_polyfit_points: 500
+    n_rows_to_remove_bonnet: 600
     centerline_from_tack_limits: False
     vertical_fov_deg: 60
     position: [0.0, 1.45000, 0.56000]
@@ -46,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:

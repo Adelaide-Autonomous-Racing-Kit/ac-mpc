@@ -217,7 +217,7 @@ class SpatialMPC:
         """
 
         # Containers for x and y coordinates of predicted states
-        x_pred, y_pred = [], []
+        predicted_locations = np.zeros((self.N, 2))
 
         # Iterate over prediction horizon
         for n in range(self.N):
@@ -229,10 +229,9 @@ class SpatialMPC:
             )
 
             # Save predicted coordinates in world coordinate frame
-            x_pred.append(predicted_temporal_state[0])
-            y_pred.append(predicted_temporal_state[1])
-
-        return x_pred, y_pred
+            predicted_locations[n,:] = predicted_temporal_state[:-1]
+            
+        return predicted_locations
 
     def _init_problem(self, spatial_state, reference_path):
         """
@@ -360,8 +359,8 @@ class SpatialMPC:
 
     def get_control(self, reference_path, offset=0):
         """
-        Get control signal given the current position of the car. Solves a
-        finite time optimization problem based on the linearized car model.
+        Get control signal given the current position of the car. 
+        Solves a finite time optimization problem based on the linearized car model.
         """
         self.reference_path = self.construct_waypoints(reference_path)
         self.reference_path = self.compute_speed_profile(
@@ -390,8 +389,6 @@ class SpatialMPC:
             # Get control signals
             control_signals = np.array(dec.x[-self.N * nu :])
             control_signals[1::2] = np.arctan(control_signals[1::2] * self.model.length)
-            v = control_signals[2]
-            delta = control_signals[3]
 
             # Update control signals
             all_velocities = control_signals[0::2]
@@ -406,32 +403,20 @@ class SpatialMPC:
             # Update predicted temporal states
             self.current_prediction = self.update_prediction(x, self.reference_path)
 
-            self.times = np.diff(x[:, 2])
             self.cum_time = x[:, 2]
+            self.times = np.diff(x[:, 2])
 
             self.accelerations = np.diff(x[:, 0]) / self.times
             self.steer_rates = np.diff(x[:, 1]) / self.times
-
-            # Get current control signal
-            u = np.array([v, delta])
 
             # if problem solved, reset infeasibility counter
             self.infeasibility_counter = 0
 
         else:
-            message = "Infeasible problem. Previous control signal used!\n"
+            n_times_failed = self.infeasibility_counter
+            message = f"Infeasible problem! Failed {n_times_failed} time(s). reference path:\n"
             failed_reference_path = np.array(
                 [[val["x"], val["y"]] for i, val in enumerate(self.reference_path)]
             )
             logger.warning(message + f"{failed_reference_path}")
-            id = nu * (self.infeasibility_counter + 1)
-            u = np.array(self.current_control[id : id + 2])
-
-            # increase infeasibility counter
             self.infeasibility_counter += 1
-
-        if self.infeasibility_counter == (self.N - 1):
-            logger.error("No control signal computed!")
-            exit(1)
-
-        return u
