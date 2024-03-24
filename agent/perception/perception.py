@@ -19,18 +19,26 @@ TURBO_JPEG = TurboJPEG()
 
 class Perceiver:
     def __init__(self, cfg: Dict):
-        self.perceiver = PerceptionProcess(cfg)
+        self._perceiver = PerceptionProcess(cfg)
         self.image_width = cfg["image_width"]
         self.image_height = cfg["image_height"]
-        self.perceiver.start()
+        self._perceiver.start()
 
     @property
     def is_centreline_stale(self) -> bool:
-        return self.perceiver.is_centreline_stale
+        return self._perceiver.is_centreline_stale
 
     @property
     def centreline(self) -> np.array:
-        return self.perceiver.centreline
+        return self._perceiver.centreline
+
+    @property
+    def is_tracklimits_stale(self) -> bool:
+        return self._perceiver.is_tracklimits_stale
+
+    @property
+    def tracklimits(self) -> Dict:
+        return self._perceiver.tracklimits
 
     def perceive(self, obs: List):
         obs = self._preprocess_observations(obs)
@@ -77,12 +85,12 @@ class Perceiver:
         return image.shape[:2] == (self.image_height, self.image_width)
 
     def _submit_image_to_perceiver(self, obs: Dict):
-        self.perceiver.input_image = obs["CameraFrontRGB"]
+        self._perceiver.input_image = obs["CameraFrontRGB"]
 
     def _maybe_add_tracklimits(self, obs: Dict):
-        if self.perceiver.is_tracklimits_stale:
+        if self._perceiver.is_tracklimits_stale:
             return
-        obs["tracks"] = self.perceiver.tracklimits
+        obs["tracks"] = self._perceiver.tracklimits
 
 
 class PerceptionProcess(mp.Process):
