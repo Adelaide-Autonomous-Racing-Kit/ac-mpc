@@ -6,7 +6,6 @@ import torch
 from loguru import logger
 import segmentation_models_pytorch as smp
 
-from monitor.system_monitor import track_runtime
 
 # V3 drivable FPN
 COLOUR_LIST = np.array(
@@ -28,7 +27,7 @@ COLOUR_LIST = np.array(
 class TrackSegmenter:
     def __init__(self, cfg: Dict):
         self.__setup_config(cfg)
-    
+
     def __setup_config(self, cfg: Dict):
         self._model_weights_path = cfg["model_path"]
         self._width = cfg["image_width"]
@@ -42,10 +41,11 @@ class TrackSegmenter:
             logger.error("[RUNTIME ERROR] Experiment not running on a gpu")
             raise Exception("MODEL MUST BE ON GPU, ABORT")
         else:
+            vram = torch.cuda.get_device_properties(0).total_memory
             logger.info(
                 f"[POD INFO] #CPUS: {os.cpu_count()} "
                 f"Device name: {torch.cuda.get_device_name(0)} "
-                f"Max memory: {torch.cuda.get_device_properties(0).total_memory/1e9:.2f}GB"
+                f"Max memory: {vram / 1e9:.2f}GB"
             )
 
     def _setup_segmentation_model(self):
@@ -60,7 +60,13 @@ class TrackSegmenter:
         if self._compile_model:
             logger.info("Compiling segmentation model with torch.compile...")
             model = torch.compile(model, mode="reduce-overhead")
-            dummy_input = torch.randn(1, 3, self._height, self._width, device=self.device)
+            dummy_input = torch.randn(
+                1,
+                3,
+                self._height,
+                self._width,
+                device=self.device,
+            )
             model(dummy_input)
         self.model = model
 

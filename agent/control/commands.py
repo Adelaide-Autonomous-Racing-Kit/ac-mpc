@@ -8,21 +8,22 @@ from loguru import logger
 class TemporalCommandSelector:
     def __init__(self, controller: ControlProcess):
         self._controller = controller
-    
+
     @property
     def _cum_time(self) -> np.array:
         return self._controller.control_cumtime
-    
+
     @property
     def _commands(self) -> np.array:
-        return self._controller.control_inputs #.T
-    
+        return self._controller.control_inputs  # .T
+
     def __call__(self, elapsed_time: float) -> np.array:
         return self.get_command(elapsed_time)
-        
+
     def get_command(self, elapsed_time: float) -> np.array:
         index = self._get_closet_command_index(elapsed_time)
-        index = index if index < len(self._commands) else len(self._commands) -1
+        n_commands = len(self._commands)
+        index = index if index < n_commands else n_commands - 1
         command = self._commands[index]
         logger.error(f"Time index: {index}")
         return command
@@ -41,18 +42,18 @@ class TemporalCommandSelector:
 class TemporalCommandInterpolator:
     def __init__(self, controller: ControlProcess):
         self._controller = controller
-    
+
     @property
     def _cum_time(self) -> np.array:
         return self._controller.control_cumtime
-    
+
     @property
     def _commands(self) -> np.array:
         return self._controller.control_inputs.T
-    
+
     def __call__(self, elapsed_time: float) -> np.array:
         return self.get_command(elapsed_time)
-        
+
     def get_command(self, elapsed_time: float) -> np.array:
         index_a, index_b = self._get_indices_of_commands_to_interpolate(elapsed_time)
         return self._interpolate_command(index_a, index_b, elapsed_time)
