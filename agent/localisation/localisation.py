@@ -9,7 +9,7 @@ from loguru import logger
 np.random.seed(0)
 
 
-class LocaliseOnTrack:
+class ParticleFilter:
     def __init__(
         self,
         vehicle_data,
@@ -151,7 +151,6 @@ class LocaliseOnTrack:
 
     def advance_particles(self, dt: float, x_dot: np.array):
         self.particles["state"] = self.particles["state"] + dt * x_dot
-        self.particles["age"] += 1
 
     def update_particles(self, observation: List[np.array]):
         """
@@ -308,7 +307,6 @@ class LocaliseOnTrack:
         particle_indices = self.sample_current_particle_indices(n_new_particles)
         new_particle_states = self.particles["state"][particle_indices] + noise
         self.add_new_particle_states(new_particle_states)
-        self.add_new_particle_ages(n_new_particles)
         self.add_new_particle_scores(particle_indices)
 
     def get_number_of_new_particles_to_create(self) -> int:
@@ -349,11 +347,6 @@ class LocaliseOnTrack:
         updated_states = np.concatenate((self.particles["state"], new_states), axis=0)
         self.particles["state"] = updated_states
 
-    def add_new_particle_ages(self, n_new_particles: int):
-        new_ages = np.zeros(n_new_particles)
-        updated_ages = np.concatenate((self.particles["age"], new_ages), axis=0)
-        self.particles["age"] = updated_ages
-
     def add_new_particle_scores(self, particle_indices: np.array):
         new_scores = self.particles["score"][particle_indices]
         updated_scores = np.concatenate((self.particles["score"], new_scores), axis=0)
@@ -373,13 +366,12 @@ class LocaliseOnTrack:
 
         samples = np.vstack((x1, y1, yaws)).T
 
-        ages = np.zeros(self.max_number_of_particles)
         scores = np.ones(self.max_number_of_particles)
         scores /= np.sum(scores)
 
         self.localised = False
 
-        self.particles = {"state": samples, "age": ages, "score": scores}
+        self.particles = {"state": samples, "score": scores}
 
     def is_localised(self):
         """

@@ -13,8 +13,7 @@ from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
 
 from control.controller import Controller
-from control.commands import TemporalCommandSelector
-from localisation.localisation import LocaliseOnTrack
+from localisation.localisation import ParticleFilter
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
 from perception.perception import Perceiver
@@ -320,9 +319,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _load_map(self):
         """Loads the generated map"""
-        track_dict = np.load(
-            self.cfg["mapping"]["map_path"] + ".npy", allow_pickle=True
-        ).item()
+        track_dict = np.load(self.cfg["mapping"]["map_path"], allow_pickle=True).item()
 
         tracks = {
             "left": track_dict["outside_track"],
@@ -359,7 +356,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
         self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
-            self.localiser = LocaliseOnTrack(
+            self.localiser = ParticleFilter(
                 self.vehicle_data,
                 tracks["centre"],
                 tracks["left"],

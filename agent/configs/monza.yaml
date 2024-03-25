@@ -31,7 +31,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/monza_verysmooth
+    map_path: track_maps/monza_verysmooth.npy
     create_map: False
     number_of_mapping_laps: 1
     control:
