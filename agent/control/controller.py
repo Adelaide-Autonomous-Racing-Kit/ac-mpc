@@ -2,9 +2,10 @@ from __future__ import annotations
 import copy
 import multiprocessing as mp
 import time
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import numpy as np
+from loguru import logger
 from scipy import sparse
 from ace.steering import SteeringGeometry
 
@@ -50,7 +51,7 @@ def build_mpc(control_cfg: Dict, vehicle_data):
 
 
 class Controller:
-    def __init__(self, cfg: Dict, perciever: PerceptionProcess):
+    def __init__(self, cfg: Dict, perciever: Perceiver):
         self._controller = ControlProcess(cfg, perciever)
         self._controller.start()
 
@@ -75,40 +76,21 @@ class Controller:
         mpc = self._controller.model_predictive_controller
         return mpc.compute_speed_profile(path)
 
+    @property
+    def reference_speed(self) -> float:
+        return self.controller.reference_speed
+
+    @reference_speed.setter
+    def reference_speed(self, reference_speed: float):
+        self._controller.reference_speed = reference_speed
+
 
 class ControlProcess(mp.Process):
-    def __init__(self, cfg: Dict, perciever: PerceptionProcess):
+    def __init__(self, cfg: Dict, perceiver: Perceiver):
         super().__init__()
-        self._perciever = perciever
+        self._perceiver = perceiver
         self.__setup(cfg)
         self._command_selector = TemporalCommandSelector(self)
-
-    def __setup(self, cfg: Dict):
-        self.__setup_config(cfg)
-        self.__setup_MPCs()
-        self.__setup_shared_memory(cfg)
-
-    def __setup_config(self, cfg: Dict):
-        self._racing_control_config = cfg["racing"]["control"]
-        self._mapping_control_config = cfg["mapping"]["control"]
-        self._vehicle_data = SteeringGeometry(cfg["vehicle"]["data_path"])
-        self._n_polyfit_points = cfg["perception"]["n_polyfit_points"]
-
-    def __setup_MPCs(self):
-        mpc = build_mpc(self._mapping_control_config, self._vehicle_data)
-        self._mapping_MPC = mpc
-        mpc = build_mpc(self._racing_control_config, self._vehicle_data)
-        self._racing_MPC = mpc
-
-    def __setup_shared_memory(self, cfg: Dict):
-        self.__setup_shared_values()
-        self.is_mapping = cfg["mapping"]["create_map"]
-        self.__setup_shared_arrays()
-
-    def __setup_shared_values(self):
-        self._is_running = mp.Value("i", True)
-        self._is_mapping = mp.Value("i", True)
-        self._shared_update_timestamp = mp.Value("d", 0.0)
 
     def __setup_shared_arrays(self):
         # TODO: If mapping and racing have different horizons this will
@@ -213,7 +195,7 @@ class ControlProcess(mp.Process):
 
     def run(self):
         while self.is_running:
-            if not self._perciever.is_centreline_stale:
+            if not self._perceiver.is_centreline_stale:
                 self._update_control()
 
     def _update_control(self):
@@ -222,26 +204,24 @@ class ControlProcess(mp.Process):
         self._update_shared_memory()
 
     def _update_reference_speed(self):
-        self.model_predictive_controller.SpeedProfileConstraints["v_max"] = (
-            self._reference_speed
-        )
+        v_max = self.reference_speed
+        logger.debug(f"Using {v_max} as reference speed")
+        self.model_predictive_controller.SpeedProfileConstraints["v_max"] = v_max
 
     @property
-    def _reference_speed(self) -> float:
-        reference_speed = self._racing_control_config["unlocalised_max_speed"]
-        # TODO: Add in localisation process
-        # if self.localiser and self.localiser.localised:
-        #    centre_index = self.localiser.estimated_position[1]
-        #    speed_index = centre_index % (len(self.reference_speeds) - 1)
-        #    reference_speed = np.mean(
-        #        self.reference_speeds[speed_index : speed_index + 100]
-        #    )
-        #    logger.info(f"Using reference speed from localisation: {reference_speed}")
+    def reference_speed(self) -> float:
+        with self._shared_reference_speed.get_lock():
+            reference_speed = self._shared_reference_speed.value
         return reference_speed
+
+    @reference_speed.setter
+    def reference_speed(self, reference_speed: float):
+        with self._shared_reference_speed.get_lock():
+            self._shared_reference_speed.value = reference_speed
 
     @property
     def _reference_path(self) -> np.array:
-        centreline = self._perciever.centreline
+        centreline = self._perceiver.centreline
         ds = int(len(centreline) / self._control_horizon)
         centreline = np.stack(
             [
@@ -264,3 +244,33 @@ class ControlProcess(mp.Process):
         self.control_inputs = mpc.projected_control.T
         self.control_cumtime = mpc.cum_time
         self.predicted_locations = mpc.current_prediction
+
+    def __setup(self, cfg: Dict):
+        self.__setup_config(cfg)
+        self.__setup_MPCs()
+        self.__setup_shared_memory(cfg)
+
+    def __setup_config(self, cfg: Dict):
+        self._racing_control_config = cfg["racing"]["control"]
+        self._mapping_control_config = cfg["mapping"]["control"]
+        self._vehicle_data = SteeringGeometry(cfg["vehicle"]["data_path"])
+        self._n_polyfit_points = cfg["perception"]["n_polyfit_points"]
+
+    def __setup_MPCs(self):
+        mpc = build_mpc(self._mapping_control_config, self._vehicle_data)
+        self._mapping_MPC = mpc
+        mpc = build_mpc(self._racing_control_config, self._vehicle_data)
+        self._racing_MPC = mpc
+
+    def __setup_shared_memory(self, cfg: Dict):
+        self.__setup_shared_values()
+        default_speed = self._racing_control_config["unlocalised_max_speed"]
+        self.reference_speed = default_speed
+        self.is_mapping = cfg["mapping"]["create_map"]
+        self.__setup_shared_arrays()
+
+    def __setup_shared_values(self):
+        self._is_running = mp.Value("i", True)
+        self._is_mapping = mp.Value("i", True)
+        self._shared_update_timestamp = mp.Value("d", 0.0)
+        self._shared_reference_speed = mp.Value("d", 0.0)

@@ -10,6 +10,7 @@ from ace.steering import SteeringGeometry
 
 from perception.shared_memory import SharedPoints
 from utils.fast_distributions import FastNormalDistribution
+from utils import load
 
 
 class Localiser:
@@ -17,6 +18,10 @@ class Localiser:
         self._previous_timestamp = time.time()
         self._localiser = LocalisationProcess(cfg, perceiver)
         self._localiser.start()
+
+    @property
+    def n_particles(self) -> int:
+        return 0
 
     @property
     def _dt(self) -> float:
@@ -34,31 +39,40 @@ class Localiser:
         """
         tyre_angle = -self._localiser.angle_from_control(control_input[0])
         control_input = (tyre_angle, *control_input[1:])
-        delta, velocity = self._add_noise_to_control(control_input)
-        x_dot = self._calculate_x_dot(delta, velocity)
-        self._advance_particles(x_dot)
+        self._advance_particles(control_input)
 
-    def _add_noise_to_control(self, control_input: Tuple[float]) -> Tuple[float]:
-        delta = control_input[0] + self._sample_yaw_noise()
-        velocity = np.abs(control_input[2] + self._sample_velocity_noise())
+    def _add_noise_to_control(
+        self,
+        control_input: Tuple[float],
+        n_particles: int,
+    ) -> Tuple[float]:
+        delta = control_input[0] + self._localiser.sample_control_noise_yaw(n_particles)
+        velocity = np.abs(
+            control_input[2]
+            + self._localiser.sample_control_noise_velocity(n_particles)
+        )
         return delta, velocity
 
-    def _sample_yaw_noise(self) -> np.array:
-        mu, sigma, n = 0, self.control_noise["yaw"], len(self.particles["state"])
-        return self._sample_gaussian_noise(mu, sigma, n)
+    def _advance_particles(self, control_input: Tuple[float]):
+        states = self._localiser._default_state_array()
+        with self._localiser.particle_lock:
+            particle_states = self._localiser.particle_states
+            n_particles = particle_states.shape[0]
+            delta, velocity = self._add_noise_to_control(control_input, n_particles)
+            x_dot = self._calculate_x_dot(delta, particle_states, velocity)
+            particle_states += x_dot * self._dt
+            states[:n_particles] = particle_states
+            self._localiser.particle_states = states
 
-    def _sample_velocity_noise(self) -> np.array:
-        mu, sigma, n = 0, self.control_noise["velocity"], len(self.particles["state"])
-        return self._sample_gaussian_noise(mu, sigma, n)
-
-    @staticmethod
-    def _sample_gaussian_noise(mu: float, sigma: float, n_samples) -> np.array:
-        return np.random.normal(mu, sigma, n_samples)
-
-    def _calculate_x_dot(self, delta: float, velocity: float) -> np.array:
+    def _calculate_x_dot(
+        self,
+        delta: float,
+        particle_states: np.array,
+        velocity: float,
+    ) -> np.array:
         wheel_base = self._localiser.wheel_base
-        phi = self.particles["state"][:, 2]
-        x_dot = np.zeros_like(self.particles["state"])
+        phi = particle_states[:, 2]
+        x_dot = np.zeros_like(particle_states)
         ## w.r.t. center
         # beta = np.arctan(0.5 * np.tan(delta))
         # x_dot[:, 0] = velocity * np.cos(phi + beta)
@@ -70,31 +84,19 @@ class Localiser:
         x_dot[:, 2] = velocity * np.tan(delta) / wheel_base
         return x_dot
 
-    def _advance_particles(self, x_dot: np.array):
-        with self._localiser.particle_state_lock:
-            particle_states = self._localiser.particle_states
-            particle_states += x_dot * self._dt
-            self._localiser.particle_states = particle_states
-
     @property
     def estimated_position(self) -> np.array:
-        return self._estimate_location()
+        return self._localiser.estimated_location
 
     @property
     def estimated_map_index(self) -> int:
-        estimated_location = self._estimate_location()
-        _, centre_idx = self.centre_track.query(estimated_location[:2])
+        estimated_position = self.estimated_position
+        _, centre_idx = self._localiser.centre_track.query(estimated_position[:2])
         return centre_idx
 
-    def _estimate_location(self) -> np.array:
-        scores = self._localiser.particle_scores.reshape(-1, 1)
-        locations = self._localiser.particle_states[:, :3]
-        estimated_location = sum(locations * scores) / sum(scores)
-        if any(np.isnan(estimated_location)):
-            n_particles = scores.shape
-            scores = np.ones(n_particles) / n_particles[0]
-            estimated_location = sum(locations * scores) / sum(scores)
-        return estimated_location
+    @property
+    def is_localised(self) -> bool:
+        return self._localiser.is_converged
 
 
 class LocalisationProcess(mp.Process):
@@ -102,6 +104,13 @@ class LocalisationProcess(mp.Process):
         super().__init__()
         self._perceiver = perceiver
         self.__setup(cfg)
+
+    @property
+    def estimated_location(self) -> np.array:
+        with self.particle_lock:
+            scores = self.particle_scores
+            states = self.particle_states
+        return self._estimate_location(scores, states)
 
     @property
     def wheel_base(self) -> float:
@@ -112,7 +121,9 @@ class LocalisationProcess(mp.Process):
 
     @property
     def particle_states(self) -> np.array:
-        return self._shared_particle_states.points
+        scores = self._shared_particle_scores.points
+        particles = self._shared_particle_states.points
+        return particles[scores > 0]
 
     @particle_states.setter
     def particle_states(self, states: np.array):
@@ -120,7 +131,8 @@ class LocalisationProcess(mp.Process):
 
     @property
     def particle_scores(self) -> np.array:
-        return self._shared_particle_scores.points
+        scores = self._shared_particle_scores.points
+        return scores[scores > 0]
 
     @particle_scores.setter
     def particle_scores(self, scores: np.array):
@@ -149,27 +161,45 @@ class LocalisationProcess(mp.Process):
         with self._is_running.get_lock():
             self._is_running.value = is_running
 
+    @property
+    def is_converged(self) -> bool:
+        """
+        Checks if the filter has converged
+
+        :return: True if the filter has converged, false if it is not
+        :rtype: bool
+        """
+        with self._is_converged.get_lock():
+            is_converged = self._is_converged.value
+        return is_converged
+
+    @is_converged.setter
+    def is_converged(self, is_converged: bool):
+        """
+        Sets if the filter has converged
+
+        :is_converged: True if the filter has converged, false if it is not
+        :type is_converged: bool
+        """
+        with self._is_converged.get_lock():
+            self._is_converged.value = is_converged
+
     def run(self):
         while self.is_running:
             if not self._perceiver.is_tracklimits_stale:
-                tracks = self._perceiver.tracklimits
-                self._score_particles([tracks["left"], tracks["right"]])
-            continue
+                continue
+            self._score_particles(self._perceiver.tracklimits)
 
-    def _score_particles(self, observation: List[np.array]):
-        observation = self.downsample_observation(observation)
+    def _score_particles(self, observation: Dict):
+        observation = self._downsample_observations(observation)
         particles = self._update_particles(observation)
-        is_reset = self._resample(particles)
-        if is_reset:
-            logger.warning("Localisation reset")
-            particles = self._update_particles(observation)
-        self._set_particles(particles)
+        self._resample_particles(particles)
+        self._update_is_converged_flag()
 
     def _downsample_observations(self, observations: List[np.array]) -> List[np.array]:
-        downsampled_observations = []
-        for observation in observations:
-            downsampled_observations.append(self._downsample_observation(observation))
-        return downsampled_observations
+        track_left = self._downsample_observation(observations["left"])
+        track_right = self._downsample_observation(observations["right"])
+        return [track_left, track_right]
 
     def _downsample_observation(self, observation: np.array) -> np.array:
         distance = np.mean(np.linalg.norm(observation[1:] - observation[:-1], axis=1))
@@ -189,13 +219,13 @@ class LocalisationProcess(mp.Process):
         return particles
 
     def _update_particle_closest_points(self, particles: Dict):
-        particle_locations = particles["states"]
-        centre_offsets, track_indices = self.find_closest_points_to_particles(
+        particle_locations = particles["states"][:, :2]
+        offsets, track_indices = self._find_closest_points_to_particles(
             particle_locations
         )
         particles["track_indices"] = track_indices
         particles["centreline_idx"] = track_indices[:, 0]
-        particles["minimum_offset"] = centre_offsets
+        particles["minimum_offset"] = offsets
 
     def _find_closest_points_to_particles(
         self,
@@ -230,46 +260,46 @@ class LocalisationProcess(mp.Process):
             next_points[:, 1] - centreline_points[:, 1],
             next_points[:, 0] - centreline_points[:, 0],
         )
-        heading_offset = track_heading - particles["state"][:, 2]
+        heading_offset = track_heading - particles["states"][:, 2]
         return (heading_offset + np.pi) % (2 * np.pi) - np.pi
 
-    def _update_particle_error(self, observation: List[np.array], particles: Dict):
-        score, error = self._calculate_particle_error(observation, particles)
+    def _update_particle_error(self, observations: List[np.array], particles: Dict):
+        score, error = self._calculate_particle_error(observations, particles)
         particles["observation_error"] = error
         particles["score"] = score
 
-    def _calculate_particle_error(self, observation: List[np.array], particles: Dict):
-        observations = self._process_observation(observation, particles)
-        track_limits = self._process_track_limits(observation, particles)
-        return self._calculate_error(observations, track_limits)
+    def _calculate_particle_error(self, observations: List[np.array], particles: Dict):
+        observation = self._process_observations(observations, particles)
+        track_limits = self._process_track_limits(observations, particles)
+        return self._calculate_error(observation, track_limits)
 
-    def _process_observation(
+    def _process_observations(
         self,
-        observation: List[np.array],
+        observations: List[np.array],
         particles: Dict,
     ) -> np.array:
         # observation[0][:, 0] = np.clip(observation[0][:, 0], -200, 200)
         # observation[0][:, 1] = np.clip(observation[0][:, 1], 0, 50)
         # observation[1][:, 0] = np.clip(observation[1][:, 0], -200, 200)
         # observation[1][:, 1] = np.clip(observation[1][:, 1], 0, 50)
-        observation[0] = observation[0][observation[0][:, 1] < 50]
-        observation[1] = observation[1][observation[1][:, 1] < 50]
+        observations[0] = observations[0][observations[0][:, 1] < 50]
+        observations[1] = observations[1][observations[1][:, 1] < 50]
         map_rot = self._calculate_map_rotation(particles)
-        observations = np.concatenate(observation)
-        n_points = observations.shape[0]
-        n_particles = len(particles["state"])
+        observation = np.concatenate(observations)
+        n_points = observation.shape[0]
+        n_particles = len(particles["states"])
         # Repeat observation for each particle the reshape for particles x points x 2 (x,y)
-        observations = np.tile(observations, (n_particles, 1))
-        observations = observations.reshape(n_particles, -1, 2).transpose(0, 2, 1)
-        observations = np.matmul(map_rot, observations)
-        observations = observations.transpose(0, 2, 1)
-        particle_states = np.tile(particles["state"][:, :2], (1, n_points)).reshape(
+        observation = np.tile(observation, (n_particles, 1))
+        observation = observation.reshape(n_particles, -1, 2).transpose(0, 2, 1)
+        observation = np.matmul(map_rot, observation)
+        observation = observation.transpose(0, 2, 1)
+        particle_states = np.tile(particles["states"][:, :2], (1, n_points)).reshape(
             n_particles, n_points, 2
         )
-        return np.add(observations, particle_states)
+        return np.add(observation, particle_states)
 
     def _calculate_map_rotation(self, particles: Dict) -> np.array:
-        angle = -particles["state"][:, 2] + np.pi / 2
+        angle = -particles["states"][:, 2] + np.pi / 2
         map_rot = np.array(
             [
                 [np.cos(angle), -np.sin(angle)],
@@ -281,28 +311,28 @@ class LocalisationProcess(mp.Process):
 
     def _process_track_limits(
         self,
-        observation: List[np.array],
+        observations: List[np.array],
         particles: Dict,
     ) -> np.array:
-        left_track_points = self._get_left_track_limits(observation, particles)
-        right_track_points = self._get_right_track_limits(observation, particles)
+        left_track_points = self._get_left_track_limits(observations, particles)
+        right_track_points = self._get_right_track_limits(observations, particles)
         return np.concatenate([left_track_points, right_track_points], axis=1)
 
-    def get_left_track_limits(
+    def _get_left_track_limits(
         self,
-        observation: np.array,
+        observations: List[np.array],
         particles: Dict,
     ) -> np.array:
         closest = particles["track_indices"][:, 1]
-        return self._get_track_limit(closest, observation[0], self.left_track)
+        return self._get_track_limit(closest, observations[0], self.left_track)
 
-    def get_right_track_limits(
+    def _get_right_track_limits(
         self,
-        observation: np.array,
+        observations: List[np.array],
         particles: Dict,
     ) -> np.array:
         closest = particles["track_indices"][:, 2]
-        return self._get_track_limit(closest, observation[1], self.right_track)
+        return self._get_track_limit(closest, observations[1], self.right_track)
 
     def _get_track_limit(
         self,
@@ -317,15 +347,15 @@ class LocalisationProcess(mp.Process):
 
     def _calculate_error(
         self,
-        observations: np.array,
+        observation: np.array,
         track_limits: np.array,
     ) -> Tuple[float]:
-        errors = np.sqrt(np.sum(np.subtract(observations, track_limits) ** 2, axis=2))
+        errors = np.linalg.norm(observation - track_limits, axis=2)
         average_track_errors = np.mean(errors, axis=1)
-        score = self.pdf(np.copy(average_track_errors)) / self.scale
+        score = self._pdf(np.copy(average_track_errors)) / self._scale
         return score, average_track_errors
 
-    def _resample(self, particles: Dict) -> bool:
+    def _resample_particles(self, particles: Dict) -> bool:
         """
         This function takes particles and randomly samples them
         in proportion to their scores, replacing ones lower than thresholds
@@ -333,56 +363,73 @@ class LocalisationProcess(mp.Process):
         self._remove_invalid_particles(particles)
         if self._is_too_few_particles(particles):
             # Lost too many particles, reset
-            self._sampling_strategy(particles)
-            return True
+            self._reset_filter()
+            logger.warning("Localisation reset")
+            return
         self._add_new_particles(particles)
-        return False
 
     def _remove_invalid_particles(self, particles: Dict):
         valid_particle_mask = self._get_valid_particle_mask(particles)
+        n_valid_particles = sum(valid_particle_mask)
+        scores = -1.0 * self._default_score_array()
+        states = self._default_state_array()
+        with self.particle_lock:
+            if n_valid_particles > 0:
+                scores[:n_valid_particles] = self.particle_scores[valid_particle_mask]
+                states[:n_valid_particles] = self.particle_states[valid_particle_mask]
+            self.particle_scores = scores
+            self.particle_states = states
         for key, val in particles.items():
             particles[key] = val[valid_particle_mask]
 
+    def _default_score_array(self) -> np.array:
+        return np.ones(self._max_n_particles, dtype=np.float32)
+
+    def _default_state_array(self) -> np.array:
+        return np.zeros((self._max_n_particles, 3), dtype=np.float32)
+
     def _get_valid_particle_mask(self, particles: Dict) -> np.array:
         sample_mask = (
-            # (self.particles["heading_offset"] < self.thresholds["rotation"])
-            (particles["minimum_offset"] < self.thresholds["offset"])
-            & (particles["observation_error"] < self.thresholds["track_limit"])
+            # (self.particles["heading_offset"] < self._threshold_rotation)
+            (particles["minimum_offset"] < self._threshold_offset)
+            & (particles["observation_error"] < self._threshold_error)
         )
         return sample_mask
 
     def _is_too_few_particles(self, particles: Dict) -> bool:
-        n_particles = particles["state"].shape[0]
-        return n_particles < self.thresholds["minimum_particles"]
+        n_particles = particles["states"].shape[0]
+        return n_particles < self._threshold_n_particles
 
-    def _sampling_strategy(self):
+    def _reset_filter(self):
         particle_start_point_idx = np.linspace(
-            0, len(self.centre_track) - 3, self.max_number_of_particles
+            0, len(self.centre_track) - 3, self._max_n_particles
         ).astype(np.int16)
         x1 = self.centre_track[particle_start_point_idx, 0]
         y1 = self.centre_track[particle_start_point_idx, 1]
         x2 = self.centre_track[particle_start_point_idx + 1, 0]
         y2 = self.centre_track[particle_start_point_idx + 1, 1]
         yaws = np.arctan2(y2 - y1, x2 - x1)
-        samples = np.vstack((x1, y1, yaws)).T
-        scores = np.ones(self.max_number_of_particles)
+        states = np.vstack((x1, y1, yaws)).T
+        scores = self._default_score_array()
         scores /= np.sum(scores)
 
         self.localised = False
-        with self.particle_state_lock:
+        with self.particle_lock:
             self.particle_scores = scores
-            self.particle_states = samples
+            self.particle_states = states
 
     def _add_new_particles(self, particles: Dict):
         n_new_particles = self._get_n_new_particles_to_create(particles)
         noise = self._generate_sampling_noise(n_new_particles)
         indices = self._sample_current_particle_indices(n_new_particles, particles)
-        new_particle_states = particles["state"][indices] + noise
-        self._add_new_particle_states(new_particle_states, particles)
-        self._add_new_particle_scores(particles, indices)
+        new_particle_states = self.particle_states[indices] + noise
+        new_particle_scores = self.particle_scores[indices]
+        with self.particle_lock:
+            self._add_new_particle_states(new_particle_states)
+            self._add_new_particle_scores(new_particle_scores)
 
     def _get_n_new_particles_to_create(self, particles: Dict) -> int:
-        n_particles = particles["state"].shape[0]
+        n_particles = particles["states"].shape[0]
         n_desired_particles = self._get_desired_n_particles()
         return max(0, n_desired_particles - n_particles)
 
@@ -398,16 +445,24 @@ class LocalisationProcess(mp.Process):
         return np.array([x_noise, y_noise, yaw_noise]).T
 
     def _sample_particle_x_noise(self, n_samples: int) -> np.array:
-        mu, sigma = 0, self.sampling_noise["x"]
+        mu, sigma = 0, self._sampling_noise_x
         return self._sample_gaussian_noise(mu, sigma, n_samples)
 
     def _sample_particle_y_noise(self, n_samples: int) -> np.array:
-        mu, sigma = 0, self.sampling_noise["y"]
+        mu, sigma = 0, self._sampling_noise_y
         return self._sample_gaussian_noise(mu, sigma, n_samples)
 
     def _sample_particle_yaw_noise(self, n_samples: int) -> np.array:
-        mu, sigma = 0, self.sampling_noise["yaw"]
+        mu, sigma = 0, self._sampling_noise_yaw
         return self._sample_gaussian_noise(mu, sigma, n_samples)
+
+    def sample_control_noise_yaw(self, n_particles: int) -> np.array:
+        mu, sigma, n = 0, self._control_noise_yaw, n_particles
+        return self._sample_gaussian_noise(mu, sigma, n)
+
+    def sample_control_noise_velocity(self, n_particles: int) -> np.array:
+        mu, sigma, n = 0, self._control_noise_velocity, n_particles
+        return self._sample_gaussian_noise(mu, sigma, n)
 
     @staticmethod
     def _sample_gaussian_noise(mu: float, sigma: float, n_samples) -> np.array:
@@ -424,42 +479,71 @@ class LocalisationProcess(mp.Process):
             weights = np.ones(scores.shape) / scores.shape[0]
         return np.random.choice(scores.shape[0], size=n_samples, p=weights)
 
-    def _add_new_particle_states(self, new_states: np.array, particles: Dict):
-        updated_states = np.concatenate((particles["state"], new_states), axis=0)
-        particles["state"] = updated_states
+    def _add_new_particle_states(self, new_states: np.array):
+        states = self._default_state_array()
+        updated_states = np.concatenate((self.particle_states, new_states), axis=0)
+        n_particles = updated_states.shape[0]
+        states[:n_particles] = updated_states
+        self.particle_states = states
 
-    def _add_new_particle_scores(self, particles: Dict, particle_indices: np.array):
-        new_scores = particles["score"][particle_indices]
-        updated_scores = np.concatenate((particles["score"], new_scores), axis=0)
-        particles["score"] = updated_scores
+    def _add_new_particle_scores(self, new_scores: np.array):
+        scores = -1.0 * self._default_score_array()
+        updated_scores = np.concatenate((self.particle_scores, new_scores), axis=0)
+        n_particles = updated_scores.shape[0]
+        scores[:n_particles] = updated_scores
+        self.particle_scores = scores
 
-    def _set_particles(self, particles: Dict):
-        with self.particle_state_lock:
-            self.particle_states = particles["states"]
-            self.particle_scores = particles["scores"]
+    def _update_is_converged_flag(self):
+        with self.particle_lock:
+            scores = self.particle_scores
+            states = self.particle_states
+        estimated_centre = self._estimate_location(scores, states)
+        distances = np.linalg.norm(states[:, :2] - estimated_centre[:2], axis=1)
+        angles = abs(states[:, 2] - estimated_centre[2])
+        particles_are_close = np.max(distances) < self._convergence_distance
+        headings_are_aligned = np.max(angles) < self._convergence_angle
+        self.is_converged = particles_are_close and headings_are_aligned
+
+    def _estimate_location(self, scores: np.array, states: np.array) -> np.array:
+        locations, scores = states[:, :3], scores.reshape(-1, 1)
+        estimated_location = sum(locations * scores) / sum(scores)
+        if any(np.isnan(estimated_location)):
+            n_particles = scores.shape
+            scores = np.ones(n_particles) / n_particles[0]
+            estimated_location = sum(locations * scores) / sum(scores)
+        return estimated_location
 
     def __setup(self, cfg: Dict):
         self.__setup_config(cfg)
         self.__setup_shared_memory()
-        self.__setup_localiser(cfg)
+        self.__setup_localiser()
 
     def __setup_config(self, cfg: Dict):
         self._steering_geometry = SteeringGeometry(cfg["vehicle"]["data_path"])
-        self._map_path = self.cfg["mapping"]["map_path"]
-        self._unpack_noise_config(cfg)
-        self._unpack_convergence_config(cfg)
-        self._unpack_particle_config(cfg)
+        self._map_path = cfg["mapping"]["map_path"]
+        localisation_cfg = cfg["localisation"]
+        self._unpack_noise_config(localisation_cfg)
+        self._unpack_threshold_config(localisation_cfg)
+        self._unpack_convergence_config(localisation_cfg)
+        self._unpack_particle_config(localisation_cfg)
 
     def _unpack_noise_config(self, cfg: Dict):
-        self._sampling_noise = cfg["sampling_noise"]
-        self._sampling_noise["yaw"] *= np.pi / 180
-        self._control_noise = cfg["control_noise"]
-        self._control_noise["yaw"] *= np.pi / 180
+        self._sampling_noise_x = cfg["sampling_noise"]["x"]
+        self._sampling_noise_y = cfg["sampling_noise"]["y"]
+        self._sampling_noise_yaw = cfg["sampling_noise"]["yaw"] * np.pi / 180
+        self._control_noise_velocity = cfg["control_noise"]["velocity"]
+        self._control_noise_yaw = cfg["control_noise"]["yaw"] * np.pi / 180
+
+    def _unpack_threshold_config(self, cfg: Dict):
+        threshold_cfg = cfg["thresholds"]
+        self._threshold_n_particles = threshold_cfg["minimum_particles"]
+        self._threshold_error = threshold_cfg["track_limit"]
+        self._threshold_offset = threshold_cfg["offset"]
+        self._threshold_rotation = threshold_cfg["rotation"] * np.pi / 180
 
     def _unpack_convergence_config(self, cfg: Dict):
-        self._convergence_criteria = cfg["convergence_criteria"]
-        self._thresholds = cfg["thresholds"]
-        self._thresholds["rotation"] *= np.pi / 180
+        self._convergence_distance = cfg["convergence_criteria"]["maximum_distance"]
+        self._convergence_angle = cfg["convergence_criteria"]["maximum_angle"]
 
     def _unpack_particle_config(self, cfg: Dict):
         self._score_distribution_mean = cfg["score_distribution"]["mean"]
@@ -468,17 +552,19 @@ class LocalisationProcess(mp.Process):
         self._n_converged_particles = cfg["n_converged_particles"]
 
     def __setup_shared_memory(self):
-        self.particle_state_lock = mp.Lock()
+        self.particle_lock = mp.Lock()
         self._shared_particle_scores = SharedPoints(self._max_n_particles, 0)
         self._shared_particle_states = SharedPoints(self._max_n_particles, 3)
         self._is_running = mp.Value("i", True)
+        self._is_converged = mp.Value("i", True)
 
     def __setup_localiser(self):
         self._load_map()
         self._initialise_score_distribution()
+        self._reset_filter()
 
     def _load_map(self) -> Dict:
-        map_dict = np.load(self._map_path, allow_pickle=True).item()
+        map_dict = load.track_map(self._map_path)
         self.centre_track = KDTree(map_dict["centre"])
         self.left_track = KDTree(map_dict["left"])
         self.right_track = KDTree(map_dict["right"])
@@ -491,5 +577,5 @@ class LocalisationProcess(mp.Process):
     def _initialise_score_distribution(self):
         mean, sigma = self._score_distribution_mean, self._score_distribution_mean
         self._distribution = FastNormalDistribution(mean, sigma)
-        self._pdf = self.distribution.pdf
-        self._scale = np.max(self.pdf(np.linspace(-10, 10, 100)))
+        self._pdf = self._distribution.pdf
+        self._scale = np.max(self._pdf(np.linspace(-10, 10, 100)))

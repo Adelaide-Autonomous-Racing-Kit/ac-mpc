@@ -13,7 +13,7 @@ from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
 
 from control.controller import Controller
-from localisation.localisation import ParticleFilter
+from localisation.localiser import Localiser
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
 from perception.perception import Perceiver
@@ -131,12 +131,11 @@ class ElTuarMPC(AssettoCorsaInterface):
     @property
     def reference_speed(self) -> float:
         reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
-        if self.localiser and self.localiser.localised:
-            centre_index = self.localiser.estimated_position[1]
+        if self.localiser and self.localiser.is_localised:
+            centre_index = self.localiser.estimated_map_index
             speed_index = centre_index % (len(self.reference_speeds) - 1)
-            reference_speed = np.mean(
-                self.reference_speeds[speed_index : speed_index + 100]
-            )
+            end_index = speed_index + 100
+            reference_speed = np.mean(self.reference_speeds[speed_index:end_index])
             logger.info(f"Using reference speed from localisation: {reference_speed}")
         return reference_speed
 
@@ -235,6 +234,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     def update_control_state(self):
         self.update_time_stamps()
         self.update_previous_control_commands()
+        self.controller.reference_speed = self.reference_speed
 
     def update_time_stamps(self):
         self.previous_time = self.current_time
@@ -269,12 +269,9 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _maybe_update_localisation(self):
         if self.localiser:
-            self.localiser.step(
-                control_command=self.control_command,
-                dt=self.dt,
-                observation=[self.left_track_detections, self.right_track_detections],
-            )
-            logger.info(f"Localised: {self.localiser.localised}")
+            self.localiser.step(self.control_command)
+            logger.info(f"Localised: {self.localiser.is_localised}")
+        """
         if self.cfg["localisation"]["collect_benchmark_observations"]:
             localisation_input = {
                 "control_command": self.control_command,
@@ -285,9 +282,7 @@ class ElTuarMPC(AssettoCorsaInterface):
                 ],
                 "game_pose": [self.game_pose],
             }
-
             self.localisation_obs[self.step_count] = localisation_input
-
             folder_name = self.cfg["localisation"][
                 "benchmark_observations_save_location"
             ]
@@ -297,6 +292,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             )
 
             self.step_count += 1
+        """
 
     @track_runtime
     def _step(self, obs):
@@ -317,52 +313,12 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _maybe_draw_visualisations(self, obs: Dict):
         self.visualiser.draw(obs)
 
-    def _load_map(self):
-        """Loads the generated map"""
-        track_dict = np.load(self.cfg["mapping"]["map_path"], allow_pickle=True).item()
-
-        tracks = {
-            "left": track_dict["outside_track"],
-            "right": track_dict["inside_track"],
-            "centre": track_dict["centre_track"],
-        }
-        logger.info(
-            f"Loaded map with shapes: {tracks['left'].shape=}"
-            + f"{tracks['right'].shape=}, {tracks['centre'].shape=}"
-        )
-        return tracks
-
-    def register_reset(self, obs) -> np.array:
-        """
-        Same input/output as select_action, except this method is called at episodal reset.
-        Defaults to select_action
-        """
-        logger.error("RESTART OCCURED (register reset triggered)")
-        if self.localiser:
-            self.localiser.sampling_strategy()
-        return self.select_action(obs)
-
     def _load_model(self):
-        tracks = self._load_map()
-
-        # Remove near duplicate centre points
-        d = np.diff(tracks["centre"], axis=0)
-        dists = np.hypot(d[:, 0], d[:, 1])
-        is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
-        is_not_duplicated[1:] = dists > 0.0001
-        tracks["left"] = tracks["left"][is_not_duplicated]
-        tracks["right"] = tracks["right"][is_not_duplicated]
-        tracks["centre"] = tracks["centre"][is_not_duplicated]
+        tracks = load.track_map(self.cfg["mapping"]["map_path"])
 
         self._calculate_speed_profile(tracks["centre"])
         if self.cfg["localisation"]["use_localisation"]:
-            self.localiser = ParticleFilter(
-                self.vehicle_data,
-                tracks["centre"],
-                tracks["left"],
-                tracks["right"],
-                self.cfg["localisation"],
-            )
+            self.localiser = Localiser(self.cfg, self.perception)
         self.mapper.map_built = True
 
     def _calculate_speed_profile(self, centre_track):
