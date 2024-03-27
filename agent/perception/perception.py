@@ -1,6 +1,6 @@
 import multiprocessing as mp
 import io
-from typing import Dict, List
+from typing import Dict
 
 import cv2
 import numpy as np
@@ -23,6 +23,7 @@ class Perceiver:
         self.image_width = cfg["image_width"]
         self.image_height = cfg["image_height"]
         self._perceiver.start()
+        self._is_first_resize = True
 
     @property
     def is_centreline_stale(self) -> bool:
@@ -40,19 +41,26 @@ class Perceiver:
     def tracklimits(self) -> Dict:
         return self._perceiver.tracklimits
 
-    def perceive(self, obs: List):
-        obs = self._preprocess_observations(obs)
+    @property
+    def input_image(self) -> np.array:
+        return self._perceiver.input_image
+
+    @property
+    def output_mask(self) -> np.array:
+        return self._perceiver.output_mask
+
+    @property
+    def output_visualisation(self) -> np.array:
+        return self._perceiver.output_visualisation
+
+    def perceive(self, obs: ObservationDict):
+        self._preprocess_observations(obs)
         self._submit_image_to_perceiver(obs)
         self._maybe_add_tracklimits(obs)
-        return obs
 
-    def _preprocess_observations(self, obs: List) -> Dict:
-        output_obs = ObservationDict(obs)
-        output_obs["CameraFrontRGB"] = self._encode_decode_image(
-            output_obs["CameraFrontRGB"]
-        )
-        self._assert_image_size_is_correct(output_obs)
-        return output_obs
+    def _preprocess_observations(self, obs: ObservationDict):
+        obs["CameraFrontRGB"] = self._encode_decode_image(obs["CameraFrontRGB"])
+        self._assert_image_size_is_correct(obs)
 
     def _encode_decode_image(self, image: np.array) -> np.array:
         # Model was trained on jpgs, this keeps it consistent
@@ -68,13 +76,15 @@ class Perceiver:
         )
         return image
 
-    def _assert_image_size_is_correct(self, obs: Dict):
+    def _assert_image_size_is_correct(self, obs: ObservationDict):
         if not self._is_image_size_correct(obs["CameraFrontRGB"]):
             original_size = obs["CameraFrontRGB"].shape
-            message = "Resizing image from  "
-            message = f"{original_size[0]}x{original_size[1]} "
-            message += f"to {self.image_width}x{self.image_height}."
-            logger.info(message)
+            if self._is_first_resize:
+                message = "Resizing images from  "
+                message = f"{original_size[0]}x{original_size[1]} "
+                message += f"to {self.image_width}x{self.image_height}."
+                logger.warning(message)
+                self._is_first_resize = False
             obs["CameraFrontRGB"] = cv2.resize(
                 obs["CameraFrontRGB"],
                 dsize=(self.image_width, self.image_height),
@@ -84,10 +94,10 @@ class Perceiver:
     def _is_image_size_correct(self, image: np.array) -> bool:
         return image.shape[:2] == (self.image_height, self.image_width)
 
-    def _submit_image_to_perceiver(self, obs: Dict):
+    def _submit_image_to_perceiver(self, obs: ObservationDict):
         self._perceiver.input_image = obs["CameraFrontRGB"]
 
-    def _maybe_add_tracklimits(self, obs: Dict):
+    def _maybe_add_tracklimits(self, obs: ObservationDict):
         if self._perceiver.is_tracklimits_stale:
             return
         obs["tracks"] = self._perceiver.tracklimits
@@ -97,34 +107,6 @@ class PerceptionProcess(mp.Process):
     def __init__(self, cfg: Dict):
         super().__init__()
         self.__setup(cfg)
-
-    def __setup(self, cfg: Dict):
-        self.__setup_config(cfg)
-        self.__setup_segmenter(cfg)
-        self.__setup_track_extractor(cfg)
-        self.__setup_shared_memory()
-
-    def __setup_config(self, cfg: Dict):
-        self._width = cfg["image_width"]
-        self._height = cfg["image_height"]
-        self._n_polyfit_points = cfg["n_polyfit_points"]
-
-    def __setup_segmenter(self, cfg: Dict):
-        self._segmenter = TrackSegmenter(cfg)
-
-    def __setup_track_extractor(self, cfg: Dict):
-        self._tracklimit_extractor = TrackLimitPerception(cfg)
-
-    def __setup_shared_memory(self):
-        self._shared_input = SharedImage(self._height, self._width, 3)
-        self._shared_mask = SharedImage(1, self._height, self._width)
-        self._shared_visualisation = SharedImage(self._height, self._width, 3)
-        self._shared_left_track = SharedPoints(self._n_polyfit_points, 2)
-        self._shared_right_track = SharedPoints(self._n_polyfit_points, 2)
-        self._shared_centre_track = SharedPoints(self._n_polyfit_points, 2)
-        self._is_running = mp.Value("i", True)
-        self._is_tracklimits_stale = mp.Value("i", True)
-        self._is_centreline_stale = mp.Value("i", True)
 
     @property
     def is_running(self) -> bool:
@@ -251,3 +233,31 @@ class PerceptionProcess(mp.Process):
         with self._is_centreline_stale.get_lock():
             self._shared_centre_track.points = tracks["centre"]
             self._is_centreline_stale.value = False
+
+    def __setup(self, cfg: Dict):
+        self.__setup_config(cfg)
+        self.__setup_segmenter(cfg)
+        self.__setup_track_extractor(cfg)
+        self.__setup_shared_memory()
+
+    def __setup_config(self, cfg: Dict):
+        self._width = cfg["image_width"]
+        self._height = cfg["image_height"]
+        self._n_polyfit_points = cfg["n_polyfit_points"]
+
+    def __setup_segmenter(self, cfg: Dict):
+        self._segmenter = TrackSegmenter(cfg)
+
+    def __setup_track_extractor(self, cfg: Dict):
+        self._tracklimit_extractor = TrackLimitPerception(cfg)
+
+    def __setup_shared_memory(self):
+        self._shared_input = SharedImage(self._height, self._width, 3)
+        self._shared_mask = SharedImage(1, self._height, self._width)
+        self._shared_visualisation = SharedImage(1, self._height, self._width)
+        self._shared_left_track = SharedPoints(self._n_polyfit_points, 2)
+        self._shared_right_track = SharedPoints(self._n_polyfit_points, 2)
+        self._shared_centre_track = SharedPoints(self._n_polyfit_points, 2)
+        self._is_running = mp.Value("i", True)
+        self._is_tracklimits_stale = mp.Value("i", True)
+        self._is_centreline_stale = mp.Value("i", True)

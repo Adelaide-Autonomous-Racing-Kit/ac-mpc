@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import List
 
 import numpy as np
-from loguru import logger
 
 
 class TemporalCommandSelector:
@@ -25,7 +24,6 @@ class TemporalCommandSelector:
         n_commands = len(self._commands)
         index = index if index < n_commands else n_commands - 1
         command = self._commands[index]
-        logger.error(f"Time index: {index}")
         return command
 
     def _get_closet_command_index(self, elapsed_time: float) -> int:

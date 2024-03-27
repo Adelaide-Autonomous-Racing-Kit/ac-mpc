@@ -84,6 +84,10 @@ class Controller:
     def reference_speed(self, reference_speed: float):
         self._controller.reference_speed = reference_speed
 
+    @property
+    def predicted_locations(self) -> np.array:
+        return self._controller.predicted_locations
+
 
 class ControlProcess(mp.Process):
     def __init__(self, cfg: Dict, perceiver: Perceiver):
@@ -205,7 +209,6 @@ class ControlProcess(mp.Process):
 
     def _update_reference_speed(self):
         v_max = self.reference_speed
-        logger.debug(f"Using {v_max} as reference speed")
         self.model_predictive_controller.SpeedProfileConstraints["v_max"] = v_max
 
     @property

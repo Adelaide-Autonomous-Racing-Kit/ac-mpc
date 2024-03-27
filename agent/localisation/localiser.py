@@ -85,18 +85,38 @@ class Localiser:
         return x_dot
 
     @property
+    def is_localised(self) -> bool:
+        return self._localiser.is_converged
+
+    @property
     def estimated_position(self) -> np.array:
         return self._localiser.estimated_location
 
     @property
     def estimated_map_index(self) -> int:
         estimated_position = self.estimated_position
-        _, centre_idx = self._localiser.centre_track.query(estimated_position[:2])
-        return centre_idx
+        _, i_centre = self._localiser.centre_track.query(estimated_position[:2])
+        return i_centre
 
     @property
-    def is_localised(self) -> bool:
-        return self._localiser.is_converged
+    def visualisation_estimated_position(self) -> Tuple:
+        estimated_position = self.estimated_position
+        _, i_centre = self._localiser.centre_track.query(estimated_position[:2])
+        _, i_left = self._localiser.left_track.query(estimated_position[:2])
+        _, i_right = self._localiser.right_track.query(estimated_position[:2])
+        return estimated_position, i_centre, i_left, i_right
+
+    @property
+    def centre_track(self) -> KDTree:
+        return self._localiser.centre_track
+
+    @property
+    def left_track(self) -> KDTree:
+        return self._localiser.left_track
+
+    @property
+    def right_track(self) -> KDTree:
+        return self._localiser.right_track
 
 
 class LocalisationProcess(mp.Process):
@@ -183,6 +203,8 @@ class LocalisationProcess(mp.Process):
         """
         with self._is_converged.get_lock():
             self._is_converged.value = is_converged
+        if is_converged:
+            self._is_previously_converged = True
 
     def run(self):
         while self.is_running:
@@ -362,9 +384,9 @@ class LocalisationProcess(mp.Process):
         """
         self._remove_invalid_particles(particles)
         if self._is_too_few_particles(particles):
-            # Lost too many particles, reset
             self._reset_filter()
-            logger.warning("Localisation reset")
+            if self._is_previously_converged:
+                logger.warning("Particle filter reset")
             return
         self._add_new_particles(particles)
 
@@ -559,6 +581,7 @@ class LocalisationProcess(mp.Process):
         self._is_converged = mp.Value("i", True)
 
     def __setup_localiser(self):
+        self._is_previously_converged = False
         self._load_map()
         self._initialise_score_distribution()
         self._reset_filter()

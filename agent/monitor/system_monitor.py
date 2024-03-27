@@ -5,6 +5,8 @@ from functools import wraps
 import numpy as np
 from loguru import logger
 
+LOG_EVERY_N = 300
+
 
 def track_runtime(function):
     @wraps(function)
@@ -104,7 +106,7 @@ class SystemMonitor:
         return self.step_count > 10 and self.select_actions_per_second < 2.0
 
     def is_logging_interval(self) -> bool:
-        return self.select_action_count % 30 == 0
+        return self.select_action_count % LOG_EVERY_N == 0
 
 
 System_Monitor = SystemMonitor()

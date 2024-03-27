@@ -17,7 +17,7 @@ from localisation.localiser import Localiser
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
 from perception.perception import Perceiver
-from recording.recorder import DataRecorder
+from perception.observations import ObservationDict
 from utils import load
 from visuals.visualisation import Visualiser
 
@@ -33,12 +33,14 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.perception = Perceiver(self.cfg["perception"])
         self.controller = Controller(self.cfg, self.perception)
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
-        # self.recorder = DataRecorder(self.save_path, self.cfg["data_collection"])
-        self.visualiser = Visualiser(self.cfg["debugging"], self)
-        self.localiser = None
+        if self.cfg["localisation"]["use_localisation"]:
+            self.localiser = Localiser(self.cfg, self.perception)
+        else:
+            self.localiser = None
         self.localisation_obs = {}
         self.step_count = 0
         System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
+        self.visualiser = Visualiser(self, self.cfg["debugging"])
 
     def setup(self):
         self.setup_state()
@@ -46,9 +48,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.seed_packages()
 
     def setup_state(self):
-        self.update_timestamp = time.time()
-        self.last_update_timestamp = time.time()
-        self.next_update_timestamp = time.time()
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0
@@ -157,9 +156,8 @@ class ElTuarMPC(AssettoCorsaInterface):
             self._setup_mapping()
 
     def _setup_mapping(self):
-        logger.info(
-            f"Building a Map from {self.cfg['mapping']['number_of_mapping_laps']} lap"
-        )
+        n_laps = self.cfg["mapping"]["number_of_mapping_laps"]
+        logger.info(f"Building a Map from {n_laps} lap")
         self._is_mapping_setup = True
 
     def _is_mapping_laps_completed(self, observation: Dict) -> bool:
@@ -188,7 +186,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._load_model()
         self._is_racing_setup = True
 
-    def select_action(self, obs) -> np.array:
+    def select_action(self, obs: List) -> np.array:
         """
         # Outputs action given the current observation
         returns:
@@ -196,42 +194,40 @@ class ElTuarMPC(AssettoCorsaInterface):
             action should be in the form of [\delta, b, t], where \delta is the normalised steering angle,
             t is the normalised throttle and b is normalised brake.
         """
-        self.update_time_stamp = time.time()
+        obs = ObservationDict(obs)
         if self.thread_exception is not None:
             logger.warning(f"Thread Exception Thrown: {self.thread_exception}")
 
         if self.cfg["multithreading"]:
-            self.executor.submit(self.maybe_update_control, obs)
+            self.executor.submit(self._maybe_update_control, obs)
         else:
             self.update_control(obs)
-        state = obs["state"]
-        speed = np.sqrt(
-            state["velocity_x"] ** 2
-            + state["velocity_y"] ** 2
-            + state["velocity_z"] ** 2
-        )
+        self._step(obs)
         controls = self.control_input
-        logger.error(controls)
-        System_Monitor.log_select_action(speed)
+        System_Monitor.log_select_action(obs["speed"])
         return controls
 
-    def maybe_update_control(self, obs):
+    def _step(self, obs: ObservationDict):
+        self._update_control_state()
+        self._update_state(obs)
+        self._maybe_update_localisation()
+
+    def _maybe_update_control(self, obs):
         if not self.update_control_lock.locked():
             with self.update_control_lock:
                 try:
-                    self.update_control(obs)
+                    self._update_control(obs)
                 except Exception as e:
                     self.thread_exception = e
-        else:
-            logger.warning("Threads queuing - skipping observation")
 
-    def update_control(self, obs):
-        self.update_control_state()
-        obs = self.perception.perceive(obs)
-        if "tracks" in obs:
-            self._step(obs)
+    def _update_control(self, obs):
+        self.perception.perceive(obs)
+        if "tracks" not in obs:
+            return
+        self.tracks = obs["tracks"]
+        self._maybe_add_observations_to_map(obs)
 
-    def update_control_state(self):
+    def _update_control_state(self):
         self.update_time_stamps()
         self.update_previous_control_commands()
         self.controller.reference_speed = self.reference_speed
@@ -241,6 +237,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.current_time = time.time()
 
     def update_previous_control_commands(self):
+        # TODO: Consider where this should be given threads submitting controls
         self.previous_steering_command = self.steering_command
         self.previous_acceleration_command = self.acceleration_command
 
@@ -256,7 +253,6 @@ class ElTuarMPC(AssettoCorsaInterface):
             obs["full_pose"]["pitch"],
             obs["full_pose"]["roll"],
         )
-        self.tracks = obs["tracks"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         if not self.mapper.map_built:
@@ -270,8 +266,6 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _maybe_update_localisation(self):
         if self.localiser:
             self.localiser.step(self.control_command)
-            logger.info(f"Localised: {self.localiser.is_localised}")
-        """
         if self.cfg["localisation"]["collect_benchmark_observations"]:
             localisation_input = {
                 "control_command": self.control_command,
@@ -290,38 +284,14 @@ class ElTuarMPC(AssettoCorsaInterface):
                 f'{folder_name}/{self.cfg["experiment_name"]}.npy',
                 self.localisation_obs,
             )
-
             self.step_count += 1
-        """
-
-    @track_runtime
-    def _step(self, obs):
-        self._update_state(obs)
-        self._maybe_add_observations_to_map(obs)
-        self._maybe_update_localisation()
-        # self._maybe_record_data(obs)
-        self._maybe_draw_visualisations(obs)
-
-    def _maybe_record_data(self, obs: Dict):
-        self.recorder.maybe_record_data(
-            obs,
-            self.dt,
-            self.steering_angle,
-            self.acceleration,
-        )
-
-    def _maybe_draw_visualisations(self, obs: Dict):
-        self.visualiser.draw(obs)
 
     def _load_model(self):
         tracks = load.track_map(self.cfg["mapping"]["map_path"])
-
         self._calculate_speed_profile(tracks["centre"])
-        if self.cfg["localisation"]["use_localisation"]:
-            self.localiser = Localiser(self.cfg, self.perception)
         self.mapper.map_built = True
 
-    def _calculate_speed_profile(self, centre_track):
+    def _calculate_speed_profile(self, centre_track: np.array):
         road_width = 9.5
         # TODO: James cringe at this line of code
         centre_track = np.stack(

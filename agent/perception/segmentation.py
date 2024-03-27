@@ -7,23 +7,6 @@ from loguru import logger
 import segmentation_models_pytorch as smp
 
 
-# V3 drivable FPN
-COLOUR_LIST = np.array(
-    [
-        (0, 0, 0),
-        (0, 255, 249),
-        (84, 84, 84),
-        (255, 119, 51),
-        (255, 255, 255),
-        (255, 255, 0),
-        (170, 255, 128),
-        (255, 42, 0),
-        (153, 153, 255),
-        (255, 179, 204),
-    ]
-)
-
-
 class TrackSegmenter:
     def __init__(self, cfg: Dict):
         self.__setup_config(cfg)
@@ -79,7 +62,6 @@ class TrackSegmenter:
         x = self._image_to_tensor(x)
         output = self.model.predict(x)
         output = torch.argmax(output, dim=1).cpu().numpy().astype(np.uint8)
-        # TODO: Move colour conversion to visualisation process
-        vis = np.squeeze(np.array(COLOUR_LIST[output], dtype=np.uint8))
+        vis = np.copy(output)
         output[output > 1] = 0
         return np.squeeze(output), vis
