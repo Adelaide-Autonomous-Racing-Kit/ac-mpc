@@ -1,7 +1,7 @@
 experiment_name: 'spa_audi'
 save_path: "data/testing"
-evaluation: True
-multithreading: False
+evaluation: False
+multithreading: True
 test: False
 seed: 0
 vehicle:
@@ -9,7 +9,7 @@ vehicle:
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
-    show_camera: True
+    show_camera: False
     show_control_image: True
     show_localisation_map: True
     show_segmentation: True
@@ -21,18 +21,21 @@ perception:
     model_segmentation: True
     model_path: "agent/models/checkpoints/spa-fpn-resnet-18-v1.pt"
     single_cam: True
+    compile_model: False
     image_width: 1280
     image_height: 736
+    n_polyfit_points: 500
+    n_rows_to_remove_bonnet: 600
     centerline_from_tack_limits: False
     vertical_fov_deg: 60
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/spa
+    map_path: track_maps/spa_verysmooth.npy
     create_map: True
-    number_of_mapping_laps: 2
+    number_of_mapping_laps: 1
     control:
-        horizon: 50
+        horizon: 100
         speed_profile_constraints:
             v_min: 5.0
             v_max: 20.0
@@ -45,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -68,14 +71,18 @@ localisation:
         maximum_angle: 90 # deg
 racing:
     control:
-        horizon: 50
+        horizon: 100
         unlocalised_max_speed: 32
         speed_profile_constraints:
             v_min: 5.0
-            v_max: 72
+            v_max: 84.0
             a_min: -0.25
             a_max: 6.0
             ay_max: 6.0
-        step_cost: [5.0e-2, 0.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
+aci:
+    race:
+        TRACK: "spa"
+        CONFIG_TRACK: ""

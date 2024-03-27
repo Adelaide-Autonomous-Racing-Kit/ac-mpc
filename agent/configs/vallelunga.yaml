@@ -1,7 +1,7 @@
-experiment_name: 'monza_audi'
+experiment_name: 'vallelunga_audi'
 save_path: "data/testing"
 evaluation: False
-multithreading: True
+multithreading: False
 test: False
 seed: 0
 vehicle:
@@ -11,7 +11,7 @@ debugging:
     birds_eye_view_size: 200
     show_camera: False
     show_control_image: True
-    show_localisation_map: True
+    show_localisation_map: False
     show_segmentation: True
     show_visualised_predictions: True
     verbose: True
@@ -19,7 +19,7 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "agent/models/checkpoints/monza-fpn-resnet-18-v1.pt"
+    model_path: "agent/models/checkpoints/vallelunga-fpn-resnet-18-v1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -31,8 +31,8 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/monza_verysmooth.npy
-    create_map: False
+    map_path: track_maps/vallelunga_verysmooth.npy
+    create_map: True
     number_of_mapping_laps: 1
     control:
         horizon: 100
@@ -48,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -84,5 +84,5 @@ racing:
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
 aci:
     race:
-        TRACK: "monza"
-        CONFIG_TRACK: ""
+        TRACK: "ks_vallelunga"
+        CONFIG_TRACK: "extended_circuit"

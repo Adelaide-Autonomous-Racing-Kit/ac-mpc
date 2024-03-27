@@ -45,8 +45,7 @@ def draw_localisation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
 
 
 def draw_control_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
-    tracks = agent.perception.tracklimits
-    tracks["centre"] = agent.perception.centreline
+    tracks = agent.perception.visualisation_tracks
     predicted_trajectory = agent.controller.predicted_locations
     x, y = predicted_trajectory[:, 0], predicted_trajectory[:, 1]
     try:

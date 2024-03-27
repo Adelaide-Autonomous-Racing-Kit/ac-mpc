@@ -25,9 +25,9 @@ torch.backends.cudnn.benchmark = True
 
 
 class ElTuarMPC(AssettoCorsaInterface):
-    def __init__(self):
-        super().__init__()
-        self.cfg = load.yaml("agent/configs/monza.yaml")
+    def __init__(self, config_path: str):
+        self.cfg = load.yaml(config_path)
+        super().__init__(self.cfg["aci"])
         self.setup()
         self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
         self.perception = Perceiver(self.cfg["perception"])
@@ -68,16 +68,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         np.random.seed(self.cfg["seed"])
 
     @property
-    def centre_track_detections(self) -> np.array:
-        return self.tracks["centre"]
-
-    @property
-    def left_track_detections(self) -> np.array:
-        return self.tracks["left"]
-
-    @property
-    def right_track_detections(self) -> np.array:
-        return self.tracks["right"]
+    def tracks(self) -> Dict:
+        return self.perception.visualisation_tracks
 
     @property
     def previous_steering_angle(self) -> float:
@@ -201,7 +193,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.cfg["multithreading"]:
             self.executor.submit(self._maybe_update_control, obs)
         else:
-            self.update_control(obs)
+            self._update_control(obs)
         self._step(obs)
         controls = self.control_input
         System_Monitor.log_select_action(obs["speed"])
@@ -222,9 +214,6 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _update_control(self, obs):
         self.perception.perceive(obs)
-        if "tracks" not in obs:
-            return
-        self.tracks = obs["tracks"]
         self._maybe_add_observations_to_map(obs)
 
     def _update_control_state(self):
@@ -256,11 +245,12 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         if not self.mapper.map_built:
+            tracks = self.tracks
             self.mapper.process_segmentation_tracks(
                 obs["full_pose"],
-                self.left_track_detections,
-                self.right_track_detections,
-                self.centre_track_detections,
+                tracks["left"],
+                tracks["right"],
+                tracks["centre"],
             )
 
     def _maybe_update_localisation(self):
@@ -287,8 +277,8 @@ class ElTuarMPC(AssettoCorsaInterface):
             self.step_count += 1
 
     def _load_model(self):
-        tracks = load.track_map(self.cfg["mapping"]["map_path"])
-        self._calculate_speed_profile(tracks["centre"])
+        # tracks = load.track_map(self.cfg["mapping"]["map_path"])
+        # self._calculate_speed_profile(tracks["centre"])
         self.mapper.map_built = True
 
     def _calculate_speed_profile(self, centre_track: np.array):

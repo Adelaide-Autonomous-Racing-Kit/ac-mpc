@@ -42,6 +42,10 @@ class Perceiver:
         return self._perceiver.tracklimits
 
     @property
+    def visualisation_tracks(self) -> Dict:
+        return self._perceiver.tracks
+
+    @property
     def input_image(self) -> np.array:
         return self._perceiver.input_image
 
@@ -56,7 +60,6 @@ class Perceiver:
     def perceive(self, obs: ObservationDict):
         self._preprocess_observations(obs)
         self._submit_image_to_perceiver(obs)
-        self._maybe_add_tracklimits(obs)
 
     def _preprocess_observations(self, obs: ObservationDict):
         obs["CameraFrontRGB"] = self._encode_decode_image(obs["CameraFrontRGB"])
@@ -96,11 +99,6 @@ class Perceiver:
 
     def _submit_image_to_perceiver(self, obs: ObservationDict):
         self._perceiver.input_image = obs["CameraFrontRGB"]
-
-    def _maybe_add_tracklimits(self, obs: ObservationDict):
-        if self._perceiver.is_tracklimits_stale:
-            return
-        obs["tracks"] = self._perceiver.tracklimits
 
 
 class PerceptionProcess(mp.Process):
@@ -199,7 +197,7 @@ class PerceptionProcess(mp.Process):
             tracks["left"] = self._shared_left_track.points
             tracks["right"] = self._shared_right_track.points
         with self._is_centreline_stale.get_lock():
-            tracks["centre"] = (self._shared_centre_track.points,)
+            tracks["centre"] = self._shared_centre_track.points
         return tracks
 
     def run(self):
