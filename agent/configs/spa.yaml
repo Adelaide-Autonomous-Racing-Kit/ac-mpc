@@ -32,7 +32,7 @@ perception:
     pitch_deg: 2.889419
 mapping:
     map_path: track_maps/spa_verysmooth.npy
-    create_map: True
+    create_map: False
     number_of_mapping_laps: 1
     control:
         horizon: 100
@@ -47,8 +47,8 @@ mapping:
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
     collect_benchmark_observations: False
-    benchmark_observations_save_location: localisation_data
-    use_localisation: False
+    benchmark_observations_save_location: localisation_data/spa
+    use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -72,14 +72,14 @@ localisation:
 racing:
     control:
         horizon: 100
-        unlocalised_max_speed: 32
+        unlocalised_max_speed: 28
         speed_profile_constraints:
             v_min: 5.0
             v_max: 84.0
             a_min: -0.25
             a_max: 6.0
             ay_max: 6.0
-        step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [6.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
 aci:

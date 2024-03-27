@@ -257,12 +257,13 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.localiser:
             self.localiser.step(self.control_command)
         if self.cfg["localisation"]["collect_benchmark_observations"]:
+            tracks = self.tracks
             localisation_input = {
                 "control_command": self.control_command,
                 "dt": self.dt,
                 "observation": [
-                    self.left_track_detections,
-                    self.right_track_detections,
+                    tracks["left"],
+                    tracks["right"],
                 ],
                 "game_pose": [self.game_pose],
             }
