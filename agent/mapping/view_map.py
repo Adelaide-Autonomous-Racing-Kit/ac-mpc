@@ -6,7 +6,7 @@ from map_maker import MapMaker
 if __name__ == "__main__":
     # track_dict = np.load("../../track_maps/monza.npy", allow_pickle=True).item()
     track_dict = np.load(
-        "../../track_maps/spa_verysmooth.npy", allow_pickle=True
+        "../../track_maps/spa_not_very_smooth.npy", allow_pickle=True
     ).item()
 
     outside = track_dict.get("outside_track")
@@ -41,12 +41,12 @@ if __name__ == "__main__":
         axis=1,
     )
 
-    # output_map = {
-    #     "outside_track": outside,
-    #     "inside_track": inside,
-    #     "centre_track": centre,
-    # }
-    # np.save("track_maps/monza_badT1_verysmooth.npy", output_map, allow_pickle=True)
+    output_map = {
+        "outside_track": outside,
+        "inside_track": inside,
+        "centre_track": centre,
+    }
+    np.save("../../track_maps/spa_verysmooth.npy", output_map, allow_pickle=True)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)

@@ -150,7 +150,10 @@ class MapMaker:
     @staticmethod
     def smooth_boi(arr, i, window_length=15, polyorder=1):
         return savgol_filter(
-            [p[i] for p in arr], window_length=window_length, polyorder=polyorder
+            [p[i] for p in arr],
+            window_length=window_length,
+            polyorder=polyorder,
+            mode="wrap",
         )
 
     @staticmethod

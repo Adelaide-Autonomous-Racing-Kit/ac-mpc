@@ -208,8 +208,9 @@ class LocalisationProcess(mp.Process):
 
     def run(self):
         while self.is_running:
-            if not self._perceiver.is_tracklimits_stale:
+            if self._perceiver.is_tracklimits_stale:
                 continue
+
             self._score_particles(self._perceiver.tracklimits)
 
     def _score_particles(self, observation: Dict):
@@ -598,7 +599,7 @@ class LocalisationProcess(mp.Process):
         self._average_distance_between_map_points = np.mean(distances)
 
     def _initialise_score_distribution(self):
-        mean, sigma = self._score_distribution_mean, self._score_distribution_mean
+        mean, sigma = self._score_distribution_mean, self._score_distribution_sigma
         self._distribution = FastNormalDistribution(mean, sigma)
         self._pdf = self._distribution.pdf
         self._scale = np.max(self._pdf(np.linspace(-10, 10, 100)))

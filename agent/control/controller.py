@@ -72,9 +72,13 @@ class Controller:
         mpc = self._controller.model_predictive_controller
         return mpc.construct_waypoints(path)
 
-    def compute_speed_profile(self, path: np.array) -> np.array:
+    def compute_speed_profile(
+        self, path: np.array, ay_max_overwrite=None, a_min_overwrite=None
+    ) -> np.array:
         mpc = self._controller.model_predictive_controller
-        return mpc.compute_speed_profile(path)
+        return mpc.compute_speed_profile(
+            path, ay_max_overwrite=ay_max_overwrite, a_min_overwrite=a_min_overwrite
+        )
 
     @property
     def reference_speed(self) -> float:

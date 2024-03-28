@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import norm
+from loguru import logger
 
 
 class FastNormalDistribution:
@@ -7,7 +8,7 @@ class FastNormalDistribution:
         self._location = location
         self._scale = scale
         self._distribution = norm
-    
+
     def pdf(self, samples: np.array) -> np.array:
         samples -= self._location
         samples /= self._scale

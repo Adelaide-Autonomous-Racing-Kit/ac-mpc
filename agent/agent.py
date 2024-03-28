@@ -41,6 +41,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.step_count = 0
         System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
         self.visualiser = Visualiser(self, self.cfg["debugging"])
+        self.last_update_time = time.time()
 
     def setup(self):
         self.setup_state()
@@ -244,7 +245,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         )
 
     def _maybe_add_observations_to_map(self, obs: Dict):
-        if not self.mapper.map_built:
+        elapsed_time_since_last_update = time.time() - self.last_update_time
+
+        if not self.mapper.map_built and elapsed_time_since_last_update > 0.1:
             tracks = self.tracks
             self.mapper.process_segmentation_tracks(
                 obs["full_pose"],
@@ -252,6 +255,7 @@ class ElTuarMPC(AssettoCorsaInterface):
                 tracks["right"],
                 tracks["centre"],
             )
+            self.last_update_time = time.time()
 
     def _maybe_update_localisation(self):
         if self.localiser:
@@ -278,8 +282,8 @@ class ElTuarMPC(AssettoCorsaInterface):
             self.step_count += 1
 
     def _load_model(self):
-        # tracks = load.track_map(self.cfg["mapping"]["map_path"])
-        # self._calculate_speed_profile(tracks["centre"])
+        tracks = load.track_map(self.cfg["mapping"]["map_path"])
+        self._calculate_speed_profile(tracks["centre"])
         self.mapper.map_built = True
 
     def _calculate_speed_profile(self, centre_track: np.array):
@@ -298,16 +302,20 @@ class ElTuarMPC(AssettoCorsaInterface):
                 logger.info(
                     f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})"
                 )
-        reference_path = self.controller.compute_speed_profile(reference_path)
+        reference_path = self.controller.compute_speed_profile(
+            reference_path, ay_max_overwrite=24.5, a_min_overwrite=-0.15
+        )
 
         plot_ref_path = np.array(
             [[val["x"], val["y"], val["v_ref"]] for i, val in enumerate(reference_path)]
         ).T
+        logger.debug(plot_ref_path)
         self._plot_speed_profile(plot_ref_path)
         self.reference_speeds = savgol_filter(plot_ref_path[2], 21, 3)
+        logger.debug(f"{self.reference_speeds}")
 
     def _plot_speed_profile(self, ref_path: np.array):
-        fig = plt.figure()
+        fig = plt.figure(dpi=300)
         ax = fig.add_subplot(111)
         sp = ax.scatter(
             ref_path[0, :],
@@ -319,5 +327,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         ax.set_aspect(1)
         plt.gray()
         fig.colorbar(sp)
-        # plt.show()
-        plt.savefig("monza_speed.png")
+        fig.tight_layout()
+        plt.savefig("spa_speed.png")
+        plt.show()

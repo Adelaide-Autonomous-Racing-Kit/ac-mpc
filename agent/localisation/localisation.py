@@ -86,8 +86,6 @@ class ParticleFilter:
             logger.warning("Localisation reset")
             self.update_particles(observation)
 
-        self.is_localised()
-
     def downsample_observation(self, observation: np.array) -> np.array:
         for i, track in enumerate(observation):
             distances = np.linalg.norm(track[1:] - track[:-1], axis=1)
