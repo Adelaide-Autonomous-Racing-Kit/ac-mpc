@@ -13,7 +13,7 @@ debugging:
     show_control_image: True
     show_localisation_map: True
     show_segmentation: True
-    show_visualised_predictions: True
+    show_visualised_predictions: False
     verbose: True
 data_collection:
     collect_images: 0
@@ -83,6 +83,11 @@ racing:
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
 aci:
-    race:
-        TRACK: "monza"
-        CONFIG_TRACK: ""
+    race.ini:
+        RACE:
+            TRACK: "monza"
+            CONFIG_TRACK: ""
+    capture:
+        use_rgb_images: False
+        use_state_dicts: True
+        wait_for_new_frames: False

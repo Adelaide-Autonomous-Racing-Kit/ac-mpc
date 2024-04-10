@@ -31,9 +31,9 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/silverstone_verysmooth.npy
-    create_map: True
-    number_of_mapping_laps: 1
+    map_path: track_maps/silverstone_not_very_smooth.npy
+    create_map: False
+    number_of_mapping_laps: 2
     control:
         horizon: 100
         speed_profile_constraints:
@@ -48,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: False
+    use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -83,6 +83,11 @@ racing:
         r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
 aci:
-    race:
-        TRACK: "ks_silverstone"
-        CONFIG_TRACK: "gp"
+    race.ini:
+        race:
+            TRACK: "ks_silverstone"
+            CONFIG_TRACK: "gp"
+    capture:
+        use_rgb_images: False
+        use_state_dicts: True
+        wait_for_new_frames: False

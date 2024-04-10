@@ -83,6 +83,11 @@ racing:
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
 aci:
-    race:
-        TRACK: "spa"
-        CONFIG_TRACK: ""
+    race.ini:
+        race:
+            TRACK: "spa"
+            CONFIG_TRACK: ""
+    capture:
+        use_rgb_images: False
+        use_state_dicts: True
+        wait_for_new_frames: False
