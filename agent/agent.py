@@ -285,6 +285,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         tracks = load.track_map(self.cfg["mapping"]["map_path"])
         self._calculate_speed_profile(tracks["centre"])
         self.mapper.map_built = True
+        if not self.localiser is None:
+            self.localiser.start()
 
     def _calculate_speed_profile(self, centre_track: np.array):
         road_width = 9.5

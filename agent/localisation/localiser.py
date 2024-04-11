@@ -17,7 +17,7 @@ class Localiser:
     def __init__(self, cfg: Dict, perceiver: PerceptionProcess):
         self._previous_timestamp = time.time()
         self._localiser = LocalisationProcess(cfg, perceiver)
-        self._localiser.start()
+        # self._localiser.start()
 
     @property
     def n_particles(self) -> int:
@@ -29,6 +29,12 @@ class Localiser:
         dt = self._current_timestamp - self._previous_timestamp
         self._previous_timestamp = self._current_timestamp
         return dt
+
+    def start(self):
+        self._localiser.start()
+
+    def shutdown(self):
+        self._localiser.is_running = False
 
     def step(self, control_input: Tuple[float]):
         """
@@ -579,7 +585,7 @@ class LocalisationProcess(mp.Process):
         self._shared_particle_scores = SharedPoints(self._max_n_particles, 0)
         self._shared_particle_states = SharedPoints(self._max_n_particles, 3)
         self._is_running = mp.Value("i", True)
-        self._is_converged = mp.Value("i", True)
+        self._is_converged = mp.Value("i", False)
 
     def __setup_localiser(self):
         self._is_previously_converged = False
