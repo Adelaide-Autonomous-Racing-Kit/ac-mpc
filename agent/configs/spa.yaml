@@ -48,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data/spa
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -72,19 +72,19 @@ localisation:
 racing:
     control:
         horizon: 100
-        unlocalised_max_speed: 32
+        unlocalised_max_speed: 18
         speed_profile_constraints:
             v_min: 5.0
             v_max: 84.0
-            a_min: -0.30
+            a_min: -0.1
             a_max: 1.0
-            ay_max: 5.5
-        step_cost: [5.0e-4, 5.0e-2, 0.0] # e_y, e_psi, t
+            ay_max: 1.0
+        step_cost: [3.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
 aci:
     race.ini:
-        race:
+        RACE:
             TRACK: "spa"
             CONFIG_TRACK: ""
     capture:

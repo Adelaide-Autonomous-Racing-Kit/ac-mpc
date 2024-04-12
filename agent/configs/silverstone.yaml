@@ -48,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -84,7 +84,7 @@ racing:
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
 aci:
     race.ini:
-        race:
+        RACE:
             TRACK: "ks_silverstone"
             CONFIG_TRACK: "gp"
     capture:
