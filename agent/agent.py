@@ -33,7 +33,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.perception = Perceiver(self.cfg["perception"])
         self.controller = Controller(self.cfg, self.perception)
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
-        if self.cfg["localisation"]["use_localisation"]:
+        if self._is_using_localisation or self._is_collecting_localisation_data:
             self.localiser = Localiser(self.cfg, self.perception)
         else:
             self.localiser = None
@@ -44,9 +44,19 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.last_update_time = time.time()
 
     def setup(self):
+        self._setup_localisation_benchmark_config()
         self.setup_state()
         self.setup_threading()
         self.seed_packages()
+
+    def _setup_localisation_benchmark_config(self):
+        cfg = self.cfg["localisation"]
+        self._is_using_localisation = cfg["use_localisation"]
+        self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
+        save_path = cfg["benchmark_observations_save_location"]
+        experiment_name = self.cfg["experiment_name"]
+        self._save_localisation_path = f"{save_path}/{experiment_name}-control.npy"
+        self._save_every_n = cfg["save_every_n"]
 
     def setup_state(self):
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
@@ -123,7 +133,7 @@ class ElTuarMPC(AssettoCorsaInterface):
     @property
     def reference_speed(self) -> float:
         reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
-        if self.localiser and self.localiser.is_localised:
+        if self._is_using_localisation and self.localiser.is_localised:
             centre_index = self.localiser.estimated_map_index
             speed_index = centre_index % (len(self.reference_speeds) - 1)
             end_index = speed_index + 100
@@ -260,25 +270,15 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _maybe_update_localisation(self):
         if self.localiser:
             self.localiser.step(self.control_command)
-        if self.cfg["localisation"]["collect_benchmark_observations"]:
-            tracks = self.tracks
+        if self._is_collecting_localisation_data:
             localisation_input = {
+                "time": time.time(),
                 "control_command": self.control_command,
-                "dt": self.dt,
-                "observation": [
-                    tracks["left"],
-                    tracks["right"],
-                ],
                 "game_pose": [self.game_pose],
             }
             self.localisation_obs[self.step_count] = localisation_input
-            folder_name = self.cfg["localisation"][
-                "benchmark_observations_save_location"
-            ]
-            np.save(
-                f'{folder_name}/{self.cfg["experiment_name"]}.npy',
-                self.localisation_obs,
-            )
+            if self.step_count % self._save_every_n == 0:
+                np.save(self._save_localisation_path, self.localisation_obs)
             self.step_count += 1
 
     def _load_model(self):

@@ -17,7 +17,6 @@ class Localiser:
     def __init__(self, cfg: Dict, perceiver: PerceptionProcess):
         self._previous_timestamp = time.time()
         self._localiser = LocalisationProcess(cfg, perceiver)
-        # self._localiser.start()
 
     @property
     def n_particles(self) -> int:
@@ -216,8 +215,12 @@ class LocalisationProcess(mp.Process):
         while self.is_running:
             if self._perceiver.is_tracklimits_stale:
                 continue
-
+            if self._is_collecting_localisation_data:
+                self._cache_observation(self._perceiver.visualisation_tracks)
             self._score_particles(self._perceiver.tracklimits)
+
+    def _cache_observation(self, observation: Dict):
+        self._tracklimit_observation = observation
 
     def _score_particles(self, observation: Dict):
         observation = self._downsample_observations(observation)
@@ -241,11 +244,26 @@ class LocalisationProcess(mp.Process):
 
     def _update_particles(self, observations: List[np.array]):
         particles = {}
+        if self._is_collecting_localisation_data:
+            self._set_timestamp_observation()
         particles["states"] = self.particle_states
+        if self._is_collecting_localisation_data:
+            self._save_observation()
         self._update_particle_closest_points(particles)
         self._update_particle_heading_offsets(particles)
         self._update_particle_error(observations, particles)
         return particles
+
+    def _set_timestamp_observation(self):
+        self._observations[self._observation_count] = {
+            "tracklimits": self._tracklimit_observation,
+            "time": time.time(),
+        }
+
+    def _save_observation(self):
+        if self._observation_count % self._save_every_n:
+            np.save(self._recording_path, self._observations)
+        self._observation_count = +1
 
     def _update_particle_closest_points(self, particles: Dict):
         particle_locations = particles["states"][:, :2]
@@ -548,6 +566,7 @@ class LocalisationProcess(mp.Process):
         self.__setup_localiser()
 
     def __setup_config(self, cfg: Dict):
+        self._experiment_name = cfg["experiment_name"]
         self._steering_geometry = SteeringGeometry(cfg["vehicle"]["data_path"])
         self._map_path = cfg["mapping"]["map_path"]
         localisation_cfg = cfg["localisation"]
@@ -555,6 +574,7 @@ class LocalisationProcess(mp.Process):
         self._unpack_threshold_config(localisation_cfg)
         self._unpack_convergence_config(localisation_cfg)
         self._unpack_particle_config(localisation_cfg)
+        self._unpack_recording_config(localisation_cfg)
 
     def _unpack_noise_config(self, cfg: Dict):
         self._sampling_noise_x = cfg["sampling_noise"]["x"]
@@ -579,6 +599,14 @@ class LocalisationProcess(mp.Process):
         self._score_distribution_sigma = cfg["score_distribution"]["sigma"]
         self._max_n_particles = cfg["n_particles"]
         self._n_converged_particles = cfg["n_converged_particles"]
+
+    def _unpack_recording_config(self, cfg: Dict):
+        self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
+        save_path = cfg["benchmark_observations_save_location"]
+        self._recording_path = f"{save_path}/{self._experiment_name}-observations.npy"
+        self._save_every_n = cfg["save_every_n"]
+        self._observations = {}
+        self._observation_count = 0
 
     def __setup_shared_memory(self):
         self.particle_lock = mp.Lock()
