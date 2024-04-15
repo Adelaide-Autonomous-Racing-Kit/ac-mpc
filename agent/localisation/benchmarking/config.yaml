@@ -26,5 +26,4 @@ particle_filter:
     maximum_distance: 30
     maximum_angle: 90 # deg
   collect_benchmark_observations: False
-  save_every_n: 50000
-  benchmark_observations_save_location: localisation_data/spa
+  benchmark_observations_save_location: localisation_data

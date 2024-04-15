@@ -605,7 +605,6 @@ class LocalisationProcess(mp.Process):
         self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
         save_path = cfg["benchmark_observations_save_location"]
         self._recording_path = f"{save_path}/{self._experiment_name}/observations.npy"
-        self._save_every_n = cfg["save_every_n"]
         self._observations = {}
         self._observation_count = 0
 

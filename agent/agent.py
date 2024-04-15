@@ -314,7 +314,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         save_path = cfg["benchmark_observations_save_location"]
         experiment_name = self.cfg["experiment_name"]
         self._save_localisation_path = f"{save_path}/{experiment_name}/control.npy"
-        self._save_every_n = cfg["save_every_n"]
 
     def _setup_state(self):
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}

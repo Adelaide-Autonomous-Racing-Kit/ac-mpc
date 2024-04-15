@@ -47,7 +47,6 @@ mapping:
         final_cost: [0.0, 0.0, 1.0e-6] # e_y, e_psi, t
 localisation:
     collect_benchmark_observations: True
-    save_every_n: 50000
     benchmark_observations_save_location: localisation_data
     use_localisation: False
     n_particles: 500
