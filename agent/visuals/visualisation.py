@@ -2,6 +2,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import time
 import threading
+import signal
 from typing import Dict
 
 import cv2
@@ -58,6 +59,7 @@ class VisualisationProcess(mp.Process):
             self._is_running.value = is_running
 
     def run(self):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         self._start_display_thread()
         while self.is_running:
             self._draw()

@@ -29,54 +29,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.cfg = load.yaml(config_path)
         super().__init__(self.cfg["aci"])
         self.setup()
-        self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
-        self.perception = Perceiver(self.cfg["perception"])
-        self.controller = Controller(self.cfg, self.perception)
-        self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
-        if self._is_using_localisation or self._is_collecting_localisation_data:
-            self.localiser = Localiser(self.cfg, self.perception)
-        else:
-            self.localiser = None
-        self.localisation_obs = {}
-        self.step_count = 0
-        System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
-        self.visualiser = Visualiser(self, self.cfg["debugging"])
-        self.last_update_time = time.time()
-
-    def setup(self):
-        self._setup_localisation_benchmark_config()
-        self.setup_state()
-        self.setup_threading()
-        self.seed_packages()
-
-    def _setup_localisation_benchmark_config(self):
-        cfg = self.cfg["localisation"]
-        self._is_using_localisation = cfg["use_localisation"]
-        self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
-        save_path = cfg["benchmark_observations_save_location"]
-        experiment_name = self.cfg["experiment_name"]
-        self._save_localisation_path = f"{save_path}/{experiment_name}-control.npy"
-        self._save_every_n = cfg["save_every_n"]
-
-    def setup_state(self):
-        self.pose = {"velocity": 0.0, "steering_angle": 0.0}
-        self.steering_command = 0
-        self.acceleration_command = 0
-        self.previous_steering_command = 0
-        self.previous_acceleration_command = 0
-        self.current_time = time.time()
-        self._is_mapping_setup = False
-        self._is_racing_setup = False
-
-    def setup_threading(self):
-        self.executor = ThreadPoolExecutor(max_workers=8)
-        self.update_control_lock = threading.Lock()
-        self.last_update_timestamp_lock = threading.Lock()
-        self.thread_exception = None
-
-    def seed_packages(self):
-        torch.manual_seed(self.cfg["seed"])
-        np.random.seed(self.cfg["seed"])
 
     @property
     def tracks(self) -> Dict:
@@ -256,7 +208,6 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         elapsed_time_since_last_update = time.time() - self.last_update_time
-
         if not self.mapper.map_built and elapsed_time_since_last_update > 0.1:
             tracks = self.tracks
             self.mapper.process_segmentation_tracks(
@@ -271,15 +222,14 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.localiser:
             self.localiser.step(self.control_command)
         if self._is_collecting_localisation_data:
+            # TODO: Move this into localiser.py
             localisation_input = {
                 "time": time.time(),
                 "control_command": self.control_command,
                 "game_pose": [self.game_pose],
             }
-            self.localisation_obs[self.step_count] = localisation_input
-            if self.step_count % self._save_every_n == 0:
-                np.save(self._save_localisation_path, self.localisation_obs)
-            self.step_count += 1
+            self._localisation_obs[self._step_count] = localisation_input
+            self._step_count += 1
 
     def _load_model(self):
         tracks = load.track_map(self.cfg["mapping"]["map_path"])
@@ -332,3 +282,81 @@ class ElTuarMPC(AssettoCorsaInterface):
         fig.tight_layout()
         plt.savefig("spa_speed.png")
         plt.show()
+
+    def teardown(self):
+        self.perception.shutdown()
+        self.controller.shutdown()
+        self.localiser.shutdown()
+        self._maybe_record_localisation_data()
+        self.visualiser.shutdown()
+
+    def _maybe_record_localisation_data(self):
+        if self._is_collecting_localisation_data:
+            np.save(self._save_localisation_path, self._localisation_obs)
+
+    def setup(self):
+        self._setup_localisation_benchmark_config()
+        self._setup_state()
+        self._setup_threading()
+        self._seed_packages()
+        self._setup_vehicle_data()
+        self._setup_perception()
+        self._setup_controller()
+        self._setup_mapper()
+        self._setup_controller()
+        self._setup_localisation()
+        self._setup_monitoring()
+
+    def _setup_localisation_benchmark_config(self):
+        cfg = self.cfg["localisation"]
+        self._is_using_localisation = cfg["use_localisation"]
+        self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
+        save_path = cfg["benchmark_observations_save_location"]
+        experiment_name = self.cfg["experiment_name"]
+        self._save_localisation_path = f"{save_path}/{experiment_name}/control.npy"
+        self._save_every_n = cfg["save_every_n"]
+
+    def _setup_state(self):
+        self.pose = {"velocity": 0.0, "steering_angle": 0.0}
+        self.steering_command = 0
+        self.acceleration_command = 0
+        self.previous_steering_command = 0
+        self.previous_acceleration_command = 0
+        self.current_time = time.time()
+        self._is_mapping_setup = False
+        self._is_racing_setup = False
+        self.last_update_time = time.time()
+
+    def _setup_threading(self):
+        self.executor = ThreadPoolExecutor(max_workers=8)
+        self.update_control_lock = threading.Lock()
+        self.last_update_timestamp_lock = threading.Lock()
+        self.thread_exception = None
+
+    def _seed_packages(self):
+        torch.manual_seed(self.cfg["seed"])
+        np.random.seed(self.cfg["seed"])
+
+    def _setup_vehicle_data(self):
+        self.vehicle_data = SteeringGeometry(self.cfg["vehicle"]["data_path"])
+
+    def _setup_perception(self):
+        self.perception = Perceiver(self.cfg["perception"])
+
+    def _setup_controller(self):
+        self.controller = Controller(self.cfg, self.perception)
+
+    def _setup_mapper(self):
+        self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
+
+    def _setup_localisation(self):
+        if self._is_using_localisation or self._is_collecting_localisation_data:
+            self.localiser = Localiser(self.cfg, self.perception)
+        else:
+            self.localiser = None
+        self._localisation_obs = {}
+        self._step_count = 0
+
+    def _setup_monitoring(self):
+        System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
+        self.visualiser = Visualiser(self, self.cfg["debugging"])

@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import io
+import signal
 from typing import Dict
 
 import cv2
@@ -99,6 +100,9 @@ class Perceiver:
 
     def _submit_image_to_perceiver(self, obs: ObservationDict):
         self._perceiver.input_image = obs["CameraFrontRGB"]
+
+    def shutdown(self):
+        self._perceiver.is_running = False
 
 
 class PerceptionProcess(mp.Process):
@@ -204,6 +208,7 @@ class PerceptionProcess(mp.Process):
         """
         Called on PerceptionProcess.start()
         """
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         self._segmenter._setup_segmentation_model()
         while self.is_running:
             mask = self._segment_drivable_area()

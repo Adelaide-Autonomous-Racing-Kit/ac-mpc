@@ -1,6 +1,7 @@
 from __future__ import annotations
 import copy
 import multiprocessing as mp
+import signal
 import time
 from typing import Dict, Tuple, Union
 
@@ -91,6 +92,9 @@ class Controller:
     @property
     def predicted_locations(self) -> np.array:
         return self._controller.predicted_locations
+
+    def shutdown(self):
+        self._controller.is_running = False
 
 
 class ControlProcess(mp.Process):
@@ -202,6 +206,7 @@ class ControlProcess(mp.Process):
         return self._mapping_MPC if self.is_mapping else self._racing_MPC
 
     def run(self):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         while self.is_running:
             if not self._perceiver.is_centreline_stale:
                 self._update_control()

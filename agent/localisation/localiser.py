@@ -1,6 +1,7 @@
 from __future__ import annotations
-import time
 import multiprocessing as mp
+import signal
+import time
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -212,12 +213,14 @@ class LocalisationProcess(mp.Process):
             self._is_previously_converged = True
 
     def run(self):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         while self.is_running:
             if self._perceiver.is_tracklimits_stale:
                 continue
             if self._is_collecting_localisation_data:
                 self._cache_observation(self._perceiver.visualisation_tracks)
             self._score_particles(self._perceiver.tracklimits)
+        self._maybe_save_observations()
 
     def _cache_observation(self, observation: Dict):
         self._tracklimit_observation = observation
@@ -245,25 +248,19 @@ class LocalisationProcess(mp.Process):
     def _update_particles(self, observations: List[np.array]):
         particles = {}
         if self._is_collecting_localisation_data:
-            self._set_timestamp_observation()
+            self._add_observation()
         particles["states"] = self.particle_states
-        if self._is_collecting_localisation_data:
-            self._save_observation()
         self._update_particle_closest_points(particles)
         self._update_particle_heading_offsets(particles)
         self._update_particle_error(observations, particles)
         return particles
 
-    def _set_timestamp_observation(self):
+    def _add_observation(self):
         self._observations[self._observation_count] = {
             "tracklimits": self._tracklimit_observation,
             "time": time.time(),
         }
-
-    def _save_observation(self):
-        if self._observation_count % self._save_every_n:
-            np.save(self._recording_path, self._observations)
-        self._observation_count = +1
+        self._observation_count += 1
 
     def _update_particle_closest_points(self, particles: Dict):
         particle_locations = particles["states"][:, :2]
@@ -560,6 +557,10 @@ class LocalisationProcess(mp.Process):
             estimated_location = sum(locations * scores) / sum(scores)
         return estimated_location
 
+    def _maybe_save_observations(self):
+        if self._is_collecting_localisation_data:
+            np.save(self._recording_path, self._observations)
+
     def __setup(self, cfg: Dict):
         self.__setup_config(cfg)
         self.__setup_shared_memory()
@@ -603,7 +604,7 @@ class LocalisationProcess(mp.Process):
     def _unpack_recording_config(self, cfg: Dict):
         self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
         save_path = cfg["benchmark_observations_save_location"]
-        self._recording_path = f"{save_path}/{self._experiment_name}-observations.npy"
+        self._recording_path = f"{save_path}/{self._experiment_name}/observations.npy"
         self._save_every_n = cfg["save_every_n"]
         self._observations = {}
         self._observation_count = 0
