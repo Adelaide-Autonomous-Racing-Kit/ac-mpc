@@ -1,5 +1,9 @@
-data_path: data/anglesey_84kph/datacollection
-map_path: track_maps/monza_verysmooth.npy
+experiment_name: "spa_audi"
+data_path: localisation_data/spa/slow
+vehicle:
+    data_path: "data/audi_r8_lms_2016"
+mapping:
+  map_path: track_maps/spa_verysmooth.npy
 particle_filter:
   n_particles: 500
   n_converged_particles: 500
@@ -21,3 +25,6 @@ particle_filter:
   convergence_criteria:
     maximum_distance: 30
     maximum_angle: 90 # deg
+  collect_benchmark_observations: False
+  save_every_n: 50000
+  benchmark_observations_save_location: localisation_data/spa

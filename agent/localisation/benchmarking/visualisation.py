@@ -3,12 +3,12 @@ from typing import Dict, List
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from localisation.localisation import LocaliseOnTrack
+from localisation.localiser import Localiser
 from localisation.tracker import LocalisationTracker
 
 
 class LocalisationVisualiser:
-    def __init__(self, localiser: LocaliseOnTrack, tracker: LocalisationTracker):
+    def __init__(self, localiser: Localiser, tracker: LocalisationTracker):
         self._particle_filter = localiser
         self._tracker = tracker
         self._subplot_axes = self._setup_plots()
@@ -31,10 +31,13 @@ class LocalisationVisualiser:
         }
         return axes
 
-    def update(self, track_detections: Dict):
+    def update_detections(self, track_detections: Dict):
         self.plot_localisation_dashboard(track_detections)
 
-    def plot_localisation_dashboard(self, track_detections: Dict):
+    def update_particles(self):
+        self.plot_dashboard_no_detections()
+
+    def plot_dashboard(self, track_detections: Dict):
         for ax in self._subplot_axes.values():
             ax.cla()
         self.plot_particles(self._subplot_axes["particle_map"])
@@ -42,6 +45,18 @@ class LocalisationVisualiser:
         self.plot_birds_eye_view_map(self._subplot_axes["bev_map"])
         self.plot_local_track(self._subplot_axes["bev_map"], track_detections)
         self.plot_local_track(self._subplot_axes["detections"], track_detections)
+        self.plot_location_errors()
+        self.plot_execution_time(self._subplot_axes["execution_time"])
+        plt.draw()
+        plt.pause(0.01)
+
+    def plot_dashboard_no_detections(self):
+        for key in self._subplot_axes.keys():
+            if key not in {"bev_map", "detections"}:
+                self._subplot_axes[key].cla()
+        self.plot_particles(self._subplot_axes["particle_map"])
+        self.plot_location_pdf(self._subplot_axes["distributions"])
+        self.plot_birds_eye_view_map(self._subplot_axes["bev_map"])
         self.plot_location_errors()
         self.plot_execution_time(self._subplot_axes["execution_time"])
         plt.draw()
@@ -92,15 +107,15 @@ class LocalisationVisualiser:
 
     def _draw_particles(self, ax: matplotlib.axes):
         ax.scatter(
-            self._particle_filter.particles["state"][1::4, 0],
-            self._particle_filter.particles["state"][1::4, 1],
+            self._particle_filter.particle_states[1::4, 0],
+            self._particle_filter.particle_states[1::4, 1],
             c="black",
             s=1,
         )
 
     def _draw_estimated_position(self, ax: matplotlib.axes):
         arrow_length = 25
-        x, y, yaw = self._particle_filter.estimated_position[0]
+        x, y, yaw = self._particle_filter.estimated_position
         dx = arrow_length * np.cos(yaw)
         dy = arrow_length * np.sin(yaw)
         ax.arrow(x, y, dx, dy, width=1, color="r")
@@ -113,8 +128,8 @@ class LocalisationVisualiser:
         ax.arrow(pose["x"], pose["y"], dx, dy, width=1, color="b")
 
     def _maybe_adjust_plot_limits(self, ax: matplotlib.axes):
-        if self._particle_filter.localised:
-            x, y, _ = self._particle_filter.estimated_position[0]
+        if self._particle_filter.is_localised:
+            x, y, _ = self._particle_filter.estimated_position
             ax.set_xlim(x - 100, x + 100)
             ax.set_ylim(y - 100, y + 100)
 
@@ -186,13 +201,13 @@ class LocalisationVisualiser:
         return np.matmul(rotation, points)
 
     def _best_particle_position(self) -> np.array:
-        best_particle = np.argmax(self._particle_filter.particles["score"])
-        x, y, _ = self._particle_filter.particles["state"][best_particle]
+        best_particle = np.argmax(self._particle_filter.particle_scores)
+        x, y, _ = self._particle_filter.particle_states[best_particle]
         return np.array([x, y])
 
     def _best_particle_orientation(self) -> float:
-        best_particle = np.argmax(self._particle_filter.particles["score"])
-        yaw = self._particle_filter.particles["state"][best_particle][2]
+        best_particle = np.argmax(self._particle_filter.particle_scores)
+        yaw = self._particle_filter.particle_states[best_particle][2]
         return yaw
 
     def _get_best_particle_rotation_transformation(self) -> np.array:

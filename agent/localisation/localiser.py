@@ -78,7 +78,7 @@ class Localiser:
         wheel_base = self._localiser.wheel_base
         phi = particle_states[:, 2]
         x_dot = np.zeros_like(particle_states)
-        ## w.r.t. center
+        # w.r.t. center
         # beta = np.arctan(0.5 * np.tan(delta))
         # x_dot[:, 0] = velocity * np.cos(phi + beta)
         # x_dot[:, 1] = velocity * np.sin(phi + beta)
@@ -633,7 +633,8 @@ class LocalisationProcess(mp.Process):
         self._average_distance_between_map_points = np.mean(distances)
 
     def _initialise_score_distribution(self):
-        mean, sigma = self._score_distribution_mean, self._score_distribution_sigma
+        mean = self._score_distribution_mean
+        sigma = self._score_distribution_sigma
         self._distribution = FastNormalDistribution(mean, sigma)
         self._pdf = self._distribution.pdf
         self._scale = np.max(self._pdf(np.linspace(-10, 10, 100)))
