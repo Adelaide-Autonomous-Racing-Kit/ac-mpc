@@ -20,6 +20,10 @@ class TestLocaliser(Localiser):
         return self._localiser.particle_scores
 
     @property
+    def particle_errors(self) -> np.array:
+        return self._localiser.particles["observation_error"]
+
+    @property
     def pdf(self) -> FastNormalDistribution:
         return self._localiser._pdf
 
@@ -30,6 +34,7 @@ class TestLocaliser(Localiser):
     def score_particles(self, observation: Dict):
         self._localiser._score_particles(observation)
 
+    @property
     def _dt(self) -> float:
         return self.dt
 
@@ -46,4 +51,11 @@ class TestLocaliser(Localiser):
 
 class TestLocalisationProcess(LocalisationProcess):
     def __init__(self, cfg: Dict):
-        self.__setup(cfg)
+        self._setup(cfg)
+
+    def _score_particles(self, observation: Dict):
+        observation = self._downsample_observations(observation)
+        particles = self._update_particles(observation)
+        self._resample_particles(particles)
+        self._update_is_converged_flag()
+        self.particles = particles

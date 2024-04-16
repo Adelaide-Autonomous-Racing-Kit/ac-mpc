@@ -1,13 +1,11 @@
-import os
 import time
 from typing import Dict, List
 
-from agent.localisation.benchmarking.utils import load
+from tqdm import tqdm
 
-from localisation.localisation import LocaliseOnTrack
-from localisation.tracker import LocalisationTracker
+from localisation.benchmarking.tracker import LocalisationTracker
 from localisation.benchmarking.utils import LocalisationRecording
-from localisation.visualisation import LocalisationVisualise
+from localisation.benchmarking.visualisation import LocalisationVisualiser
 from localisation.benchmarking.test_localiser import TestLocaliser
 
 
@@ -21,24 +19,25 @@ class BenchmarkLocalisation:
         self._setup_particle_filter()
         self._setup_tracker(self._localiser)
         self._setup_visualiser(self._localiser, self._tracker)
+        self._n_observations = 0
 
     def _unpack_config(self, cfg: Dict):
         self._cfg = cfg
         self._data_path = cfg["data_path"]
-        self._localisation_config = cfg["particle_filter"]
+        self._n_observations_between_plots = cfg["n_observations_between_plots"]
 
-    def _setup_particle_filter(self) -> LocaliseOnTrack:
+    def _setup_particle_filter(self) -> TestLocaliser:
         self._localiser = TestLocaliser(self._cfg)
 
-    def _setup_tracker(self, localiser: LocaliseOnTrack) -> LocalisationTracker:
+    def _setup_tracker(self, localiser: TestLocaliser) -> LocalisationTracker:
         self._tracker = LocalisationTracker(localiser, self._gt_poses)
 
     def _setup_visualiser(
         self,
-        localiser: LocaliseOnTrack,
+        localiser: TestLocaliser,
         tracker: LocalisationTracker,
     ):
-        self._visualiser = LocalisationVisualise(localiser, tracker)
+        self._visualiser = LocalisationVisualiser(localiser, tracker)
 
     @property
     def _gt_poses(self) -> List[Dict]:
@@ -49,16 +48,18 @@ class BenchmarkLocalisation:
         return poses
 
     def run(self):
-        for record in self._recording:
+        for record in tqdm(self._recording):
             if "control_command" in record:
-                # Advance particles
                 time_for_step = self._step_particles(record)
-                self._visualiser.update_particles()
-            if "centre" in record:
-                # Score Particles
-                time_for_step = self._score_particles(record)
-                self._visualiser.update_detections(record)
-            self._tracker.update(time_for_step)
+                #  self._visualiser.update_particles()
+                self._tracker.update_step(time_for_step)
+            if "tracklimits" in record:
+                observation = record["tracklimits"]
+                time_for_step = self._score_particles(observation)
+                if self._n_observations % self._n_observation_between_plots == 0:
+                    self._visualiser.update_detections(observation)
+                self._tracker.update_observation(time_for_step)
+                self._n_observations += 1
 
     def _step_particles(self, record: Dict):
         start_time = time.time()

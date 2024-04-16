@@ -3,12 +3,18 @@ from typing import Dict, List
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from localisation.localiser import Localiser
-from localisation.tracker import LocalisationTracker
+from localisation.benchmarking.test_localiser import TestLocaliser
+from localisation.benchmarking.tracker import LocalisationTracker
+
+
+MONZA_X_LIMIT = [-1200, 300]
+MONZA_Y_LIMIT = [-1400, 1000]
+SPA_X_LIMIT = []
+SPA_Y_LIMIT = []
 
 
 class LocalisationVisualiser:
-    def __init__(self, localiser: Localiser, tracker: LocalisationTracker):
+    def __init__(self, localiser: TestLocaliser, tracker: LocalisationTracker):
         self._particle_filter = localiser
         self._tracker = tracker
         self._subplot_axes = self._setup_plots()
@@ -23,7 +29,8 @@ class LocalisationVisualiser:
             "particle_map": top_ax[0],
             "bev_map": top_ax[1],
             "detections": top_ax[2],
-            "execution_time": middle_ax[0],
+            "step_execution_time": middle_ax[0],
+            "observation_execution_time": middle_ax[1],
             "distributions": middle_ax[2],
             "error_x": bottom_ax[0],
             "error_y": bottom_ax[1],
@@ -32,7 +39,7 @@ class LocalisationVisualiser:
         return axes
 
     def update_detections(self, track_detections: Dict):
-        self.plot_localisation_dashboard(track_detections)
+        self.plot_dashboard(track_detections)
 
     def update_particles(self):
         self.plot_dashboard_no_detections()
@@ -46,19 +53,23 @@ class LocalisationVisualiser:
         self.plot_local_track(self._subplot_axes["bev_map"], track_detections)
         self.plot_local_track(self._subplot_axes["detections"], track_detections)
         self.plot_location_errors()
-        self.plot_execution_time(self._subplot_axes["execution_time"])
+        self.plot_step_execution_time(self._subplot_axes["step_execution_time"])
+        self.plot_observation_execution_time(
+            self._subplot_axes["observation_execution_time"]
+        )
         plt.draw()
-        plt.pause(0.01)
+        plt.pause(0.001)
 
     def plot_dashboard_no_detections(self):
         for key in self._subplot_axes.keys():
-            if key not in {"bev_map", "detections"}:
+            if key in {"particle_map", "bev_map", "execution_time"}:
                 self._subplot_axes[key].cla()
         self.plot_particles(self._subplot_axes["particle_map"])
-        self.plot_location_pdf(self._subplot_axes["distributions"])
         self.plot_birds_eye_view_map(self._subplot_axes["bev_map"])
-        self.plot_location_errors()
-        self.plot_execution_time(self._subplot_axes["execution_time"])
+        self.plot_step_execution_time(self._subplot_axes["step_execution_time"])
+        self.plot_observation_execution_time(
+            self._subplot_axes["observation_execution_time"]
+        )
         plt.draw()
         plt.pause(0.01)
 
@@ -80,8 +91,8 @@ class LocalisationVisualiser:
 
     def _setup_particle_map_visualisation_plot(self, ax: matplotlib.axes):
         ax.set_aspect(1)
-        ax.set_xlim(-1200, 300)
-        ax.set_ylim(-1400, 1000)
+        ax.set_xlim(-800, 800)
+        ax.set_ylim(-1200, 1200)
         ax.set_title("Particle filter")
 
     def _draw_particles_and_map(self, ax: matplotlib.axes):
@@ -134,9 +145,10 @@ class LocalisationVisualiser:
             ax.set_ylim(y - 100, y + 100)
 
     def plot_location_pdf(self, ax: matplotlib.axes):
-        x = self._particle_filter.particles["observation_error"]
+        ax.set_title("Offset PDF")
+        x = self._particle_filter.particle_errors
         y = self._particle_filter.pdf(np.copy(x)) / self._particle_filter.scale
-        ax.plot(x, y, label="offset_pdf")
+        ax.plot(x, y)
 
     # def plot_orientation_pdf():
     #    ax[3].plot(x, orientation_pdf(x) / ori_scale, label="orientation_pdf")
@@ -238,6 +250,14 @@ class LocalisationVisualiser:
     def _draw_vehicle_pose(self, ax: matplotlib.axes):
         ax.arrow(0, 0, 0, 30, width=1, color="g")
 
-    def plot_execution_time(self, ax: matplotlib.axes):
-        ax.set_title("Step Time")
-        self._draw_error_histogram(ax, self._tracker._execution_times)
+    def plot_observation_execution_time(self, ax: matplotlib.axes):
+        data = self._tracker._observation_execution_times
+        self.plot_execution_time(ax, "Observation Time", data)
+
+    def plot_step_execution_time(self, ax: matplotlib.axes):
+        data = self._tracker._step_execution_times
+        self.plot_execution_time(ax, "Step Time", data)
+
+    def plot_execution_time(self, ax: matplotlib.axes, title: str, data: np.array):
+        ax.set_title(title)
+        self._draw_error_histogram(ax, data)

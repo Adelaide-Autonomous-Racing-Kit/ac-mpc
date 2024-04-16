@@ -16,11 +16,14 @@ class LocalisationRecording:
         observations = load.npy(f"{self._data_path}/observations.npy")
         control = self._dict_to_list(control)
         observations = self._dict_to_list(observations)
-        recording = control.extend(observations)
-        self._recording = sorted(recording, key=lambda x: x["time"])
+        control.extend(observations)
+        self._recording = sorted(control, key=lambda x: x["time"])
 
     def _dict_to_list(self, dictionary: Dict) -> List:
         return [dictionary[x] for x in dictionary.keys()]
 
     def __getitem__(self, index: int) -> Dict:
         return self._recording[index]
+
+    def __len__(self) -> int:
+        return len(self._recording)

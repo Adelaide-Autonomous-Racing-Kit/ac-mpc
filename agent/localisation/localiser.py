@@ -129,7 +129,7 @@ class LocalisationProcess(mp.Process):
     def __init__(self, cfg: Dict, perceiver: PerceptionProcess):
         super().__init__()
         self._perceiver = perceiver
-        self.__setup(cfg)
+        self._setup(cfg)
 
     @property
     def estimated_location(self) -> np.array:
@@ -434,7 +434,7 @@ class LocalisationProcess(mp.Process):
 
     def _get_valid_particle_mask(self, particles: Dict) -> np.array:
         sample_mask = (
-            # (self.particles["heading_offset"] < self._threshold_rotation)
+            # (particles["heading_offset"] < self._threshold_rotation)
             (particles["minimum_offset"] < self._threshold_offset)
             & (particles["observation_error"] < self._threshold_error)
         )
@@ -561,7 +561,7 @@ class LocalisationProcess(mp.Process):
         if self._is_collecting_localisation_data:
             np.save(self._recording_path, self._observations)
 
-    def __setup(self, cfg: Dict):
+    def _setup(self, cfg: Dict):
         self.__setup_config(cfg)
         self.__setup_shared_memory()
         self.__setup_localiser()
