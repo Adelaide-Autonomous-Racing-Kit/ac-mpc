@@ -6,7 +6,7 @@ from localisation.benchmarking.benchmark_localisation import BenchmarkLocalisati
 
 
 def main():
-    cfg = load.yaml("agent/localisation/benchmarking/config.yaml")
+    cfg = load.yaml("agent/localisation/benchmarking/monza.yaml")
     benchmarker = BenchmarkLocalisation(cfg)
 
     logger.info("Running localisation benchmark")

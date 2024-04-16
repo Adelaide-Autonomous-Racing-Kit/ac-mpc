@@ -9,8 +9,8 @@ from localisation.benchmarking.tracker import LocalisationTracker
 
 MONZA_X_LIMIT = [-1200, 300]
 MONZA_Y_LIMIT = [-1400, 1000]
-SPA_X_LIMIT = []
-SPA_Y_LIMIT = []
+SPA_X_LIMIT = [-800, 800]
+SPA_Y_LIMIT = [-1200, 1200]
 
 
 class LocalisationVisualiser:

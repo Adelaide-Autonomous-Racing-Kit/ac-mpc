@@ -56,7 +56,7 @@ class BenchmarkLocalisation:
             if "tracklimits" in record:
                 observation = record["tracklimits"]
                 time_for_step = self._score_particles(observation)
-                if self._n_observations % self._n_observation_between_plots == 0:
+                if self._n_observations % self._n_observations_between_plots == 0:
                     self._visualiser.update_detections(observation)
                 self._tracker.update_observation(time_for_step)
                 self._n_observations += 1

@@ -45,7 +45,7 @@ class TestLocaliser(Localiser):
     def _update_control_timestamp(self, timestamp: float):
         if self._last_timestamp is None:
             self._last_timestamp = timestamp
-        self.dt = self._last_timestamp - timestamp
+        self.dt = timestamp - self._last_timestamp
         self._last_timestamp = timestamp
 
 

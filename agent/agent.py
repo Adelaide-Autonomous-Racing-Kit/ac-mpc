@@ -286,12 +286,13 @@ class ElTuarMPC(AssettoCorsaInterface):
     def teardown(self):
         self.perception.shutdown()
         self.controller.shutdown()
-        self.localiser.shutdown()
+        if self.localiser:
+            self.localiser.shutdown()
         self._maybe_record_localisation_data()
         self.visualiser.shutdown()
 
     def _maybe_record_localisation_data(self):
-        if self._is_collecting_localisation_data:
+        if self.localiser and self._is_collecting_localisation_data:
             np.save(self._save_localisation_path, self._localisation_obs)
 
     def setup(self):

@@ -289,6 +289,7 @@ class LocalisationProcess(mp.Process):
             particles,
             next_points,
         )
+        # logger.info(f"Headings {heading_offset * 180 / np.pi}")
         particles["heading_offset"] = heading_offset
 
     def _get_track_points_by_index(self, indices: np.array) -> np.array:
@@ -304,8 +305,9 @@ class LocalisationProcess(mp.Process):
             next_points[:, 1] - centreline_points[:, 1],
             next_points[:, 0] - centreline_points[:, 0],
         )
+        # logger.debug(f"Track Heading {track_heading * 180 / np.pi}")
         heading_offset = track_heading - particles["states"][:, 2]
-        return (heading_offset + np.pi) % (2 * np.pi) - np.pi
+        return np.abs((heading_offset + np.pi) % (2 * np.pi) - np.pi)
 
     def _update_particle_error(self, observations: List[np.array], particles: Dict):
         score, error = self._calculate_particle_error(observations, particles)
@@ -434,10 +436,13 @@ class LocalisationProcess(mp.Process):
 
     def _get_valid_particle_mask(self, particles: Dict) -> np.array:
         sample_mask = (
-            # (particles["heading_offset"] < self._threshold_rotation)
-            (particles["minimum_offset"] < self._threshold_offset)
+            (particles["heading_offset"] < self._threshold_rotation)
+            & (particles["minimum_offset"] < self._threshold_offset)
             & (particles["observation_error"] < self._threshold_error)
         )
+        # logger.info(particles["observation_error"])
+        # logger.info(particles["minimum_offset"])
+        # logger.info(particles["heading_offset"] * 180 / np.pi)
         return sample_mask
 
     def _is_too_few_particles(self, particles: Dict) -> bool:

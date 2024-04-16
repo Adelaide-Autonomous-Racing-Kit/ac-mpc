@@ -1,6 +1,6 @@
 experiment_name: "spa_audi"
 data_path: localisation_data/spa_audi/slow
-n_observation_between_plots: 10
+n_observations_between_plots: 10
 vehicle:
     data_path: "data/audi_r8_lms_2016"
 mapping:
@@ -11,20 +11,20 @@ localisation:
   sampling_noise:
     x: 1.0
     y: 1.0
-    yaw: 1.0 # deg
+    yaw: 2.0 # deg
   control_noise:
-    velocity: 0.1
-    yaw:  1.0 # deg
+    velocity: 2
+    yaw:  0.16 # degrees
   thresholds:
     offset: 10
-    rotation: 90 # deg
+    rotation: 45 # deg
     minimum_particles: 20
-    track_limit: 1.0e6
+    track_limit: 25
   score_distribution:
     mean: 0
     sigma: 10
   convergence_criteria:
-    maximum_distance: 30
-    maximum_angle: 90 # deg
+    maximum_distance: 25
+    maximum_angle: 60 # deg
   collect_benchmark_observations: False
   benchmark_observations_save_location: localisation_data

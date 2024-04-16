@@ -19,7 +19,7 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "agent/models/checkpoints/vallelunga-fpn-resnet-18-v1.pt"
+    model_path: "agent/models/checkpoints/vallelunga-fpn-resnet-18-v1.1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -31,7 +31,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/vallelunga_not_verysmooth.npy
+    map_path: track_maps/vallelunga_not_verysmooth_0.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -42,7 +42,7 @@ mapping:
             a_min: -3.0
             a_max: 6.0
             ay_max: 2.0
-        step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
+        step_cost: [1.0e-3, 1.0e-1, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
