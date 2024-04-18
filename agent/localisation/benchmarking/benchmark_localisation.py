@@ -1,6 +1,7 @@
 import time
 from typing import Dict, List
 
+import numpy as np
 from tqdm import tqdm
 
 from localisation.benchmarking.tracker import LocalisationTracker
@@ -15,6 +16,7 @@ class BenchmarkLocalisation:
 
     def __setup(self, cfg: Dict):
         self._unpack_config(cfg)
+        self._seed_numpy()
         self._recording = LocalisationRecording(self._data_path)
         self._setup_particle_filter()
         self._setup_tracker(self._localiser)
@@ -25,6 +27,10 @@ class BenchmarkLocalisation:
         self._cfg = cfg
         self._data_path = cfg["data_path"]
         self._n_observations_between_plots = cfg["n_observations_between_plots"]
+        self._seed = cfg["seed"]
+
+    def _seed_numpy(self):
+        np.random.seed(self._seed)
 
     def _setup_particle_filter(self) -> TestLocaliser:
         self._localiser = TestLocaliser(self._cfg)
@@ -58,6 +64,7 @@ class BenchmarkLocalisation:
                 time_for_step = self._score_particles(observation)
                 if self._n_observations % self._n_observations_between_plots == 0:
                     self._visualiser.update_detections(observation)
+                    pass
                 self._tracker.update_observation(time_for_step)
                 self._n_observations += 1
 

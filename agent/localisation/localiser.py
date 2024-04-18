@@ -253,6 +253,7 @@ class LocalisationProcess(mp.Process):
         self._update_particle_closest_points(particles)
         self._update_particle_heading_offsets(particles)
         self._update_particle_error(observations, particles)
+        self._update_particle_scores(particles)
         return particles
 
     def _add_observation(self):
@@ -401,6 +402,14 @@ class LocalisationProcess(mp.Process):
         score = self._pdf(np.copy(average_track_errors)) / self._scale
         return score, average_track_errors
 
+    def _update_particle_scores(self, particles: Dict):
+        scores = -1.0 * self._default_score_array()
+        with self.particle_lock:
+            particle_scores = self.particle_scores
+            n_particles = particle_scores.shape[0]
+            scores[:n_particles] = particles["score"]
+            self.particle_scores = scores
+
     def _resample_particles(self, particles: Dict) -> bool:
         """
         This function takes particles and randomly samples them
@@ -462,7 +471,7 @@ class LocalisationProcess(mp.Process):
         scores = self._default_score_array()
         scores /= np.sum(scores)
 
-        self.localised = False
+        self.is_converged = False
         with self.particle_lock:
             self.particle_scores = scores
             self.particle_states = states
@@ -483,7 +492,7 @@ class LocalisationProcess(mp.Process):
         return max(0, n_desired_particles - n_particles)
 
     def _get_desired_n_particles(self) -> int:
-        if self.localised:
+        if self.is_converged:
             return self._n_converged_particles
         return self._max_n_particles
 

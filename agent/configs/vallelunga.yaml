@@ -46,7 +46,7 @@ mapping:
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: False
+    collect_benchmark_observations: True
     benchmark_observations_save_location: localisation_data
     use_localisation: False
     n_particles: 500

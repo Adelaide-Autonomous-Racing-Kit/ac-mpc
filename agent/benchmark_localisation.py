@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 from loguru import logger
 
@@ -6,7 +8,8 @@ from localisation.benchmarking.benchmark_localisation import BenchmarkLocalisati
 
 
 def main():
-    cfg = load.yaml("agent/localisation/benchmarking/monza.yaml")
+    args = parse_arguments()
+    cfg = load.yaml(args.config)
     benchmarker = BenchmarkLocalisation(cfg)
 
     logger.info("Running localisation benchmark")
@@ -21,6 +24,12 @@ def main():
     logger.success(
         f"Average rotation error: {benchmarker._tracker.average_rotation_error() * 180/np.pi:.2f} degrees"
     )
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, help="Path to configuration")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
