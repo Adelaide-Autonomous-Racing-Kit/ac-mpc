@@ -1,3 +1,4 @@
+from threading import local
 from typing import Dict
 
 import numpy as np
@@ -83,4 +84,5 @@ class LocalisationTracker:
 
     def percentage_of_steps_localised_for(self) -> float:
         localised_steps = sum(self._n_steps_localised_for)
+        localised_steps += self._n_steps
         return 100 * (localised_steps / self._n_total_steps)
