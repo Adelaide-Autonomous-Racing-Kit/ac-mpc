@@ -46,9 +46,9 @@ mapping:
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-6] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: True
+    collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: False
+    use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -76,9 +76,9 @@ racing:
         speed_profile_constraints:
             v_min: 5.0
             v_max: 84.0
-            a_min: -0.1
+            a_min: -0.3
             a_max: 1.0
-            ay_max: 1.0
+            ay_max: 4.0
         step_cost: [3.5e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t

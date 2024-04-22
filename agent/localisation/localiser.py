@@ -449,7 +449,7 @@ class LocalisationProcess(mp.Process):
             & (particles["minimum_offset"] < self._threshold_offset)
             & (particles["observation_error"] < self._threshold_error)
         )
-        logger.info(particles["observation_error"])
+        # logger.info(particles["observation_error"])
         # logger.info(particles["minimum_offset"])
         # logger.info(particles["heading_offset"] * 180 / np.pi)
         return sample_mask
