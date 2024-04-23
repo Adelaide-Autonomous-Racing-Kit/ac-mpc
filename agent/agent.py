@@ -255,7 +255,9 @@ class ElTuarMPC(AssettoCorsaInterface):
                     f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})"
                 )
         reference_path = self.controller.compute_speed_profile(
-            reference_path, ay_max_overwrite=24.5, a_min_overwrite=-0.15
+            reference_path,
+            ay_max_overwrite=7.0,
+            a_min_overwrite=-0.3,
         )
 
         plot_ref_path = np.array(

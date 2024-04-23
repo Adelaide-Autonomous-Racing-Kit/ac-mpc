@@ -17,19 +17,22 @@ def track_map(path: str) -> Dict:
         f"Loaded map with shapes: {tracks['left'].shape=}"
         + f"{tracks['right'].shape=}, {tracks['centre'].shape=}"
     )
-    # Remove near duplicate centre points
-    d = np.diff(tracks["centre"], axis=0)
-    dists = np.hypot(d[:, 0], d[:, 1])
-    is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
-    is_not_duplicated[1:] = dists > 0.0001
-    tracks["left"] = tracks["left"][is_not_duplicated]
-    tracks["right"] = tracks["right"][is_not_duplicated]
-    tracks["centre"] = tracks["centre"][is_not_duplicated]
+    tracks["left"] = remove_near_duplicate_points(tracks["left"])
+    tracks["right"] = remove_near_duplicate_points(tracks["right"])
+    tracks["centre"] = remove_near_duplicate_points(tracks["centre"])
     logger.info(
         f"Removed duplicates from map, shapes: {tracks['left'].shape=}"
         + f"{tracks['right'].shape=}, {tracks['centre'].shape=}"
     )
     return tracks
+
+
+def remove_near_duplicate_points(track: np.array) -> np.array:
+    d = np.diff(track, axis=0)
+    dists = np.hypot(d[:, 0], d[:, 1])
+    is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
+    is_not_duplicated[1:] = dists > 0.0001
+    return track[is_not_duplicated]
 
 
 def _load_json_track(path: str) -> Dict:

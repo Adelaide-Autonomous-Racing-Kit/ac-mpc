@@ -62,7 +62,7 @@ localisation:
         offset: 10
         rotation: 90 # deg
         minimum_particles: 20
-        track_limit: 40
+        track_limit: 30
     score_distribution:
         mean: 0
         sigma: 10

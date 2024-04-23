@@ -13,13 +13,13 @@ debugging:
     show_control_image: True
     show_localisation_map: True
     show_segmentation: True
-    show_visualised_predictions: True
+    show_visualised_predictions: False
     verbose: True
 data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "agent/models/checkpoints/silverstone-fpn-resnet-18-v1.pt"
+    model_path: "agent/models/checkpoints/silverstone-fpn-resnet-18-v1.1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -31,7 +31,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/silverstone_not_very_smooth.npy
+    map_path: track_maps/silverstone_verysmooth.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -48,7 +48,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: False
+    use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:

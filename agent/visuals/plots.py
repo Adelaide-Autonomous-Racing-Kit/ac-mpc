@@ -37,9 +37,6 @@ def draw_localisation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
         right_track.T, number_of_track_points, degree=4
     )
     """
-
-    logger.debug(f"Right: {right_track}")
-    logger.debug(f"Left: {left_track}")
     scale = 4
     utils.draw_track_lines_on_bev(canvas, scale, [centre_track], colour=(0, 255, 0))
     utils.draw_track_lines_on_bev(canvas, scale, [left_track], colour=(255, 0, 0))

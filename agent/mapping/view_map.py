@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -29,16 +30,16 @@ def main(args: argparse.Namespace):
 
         inside = np.stack(
             (
-                MapMaker.smooth_boi(inside, 0, window_length=360, polyorder=3),
-                MapMaker.smooth_boi(inside, 1, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(inside, 0, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(inside, 1, window_length=180, polyorder=3),
             ),
             axis=1,
         )
 
         centre = np.stack(
             (
-                MapMaker.smooth_boi(centre, 0, window_length=360, polyorder=3),
-                MapMaker.smooth_boi(centre, 1, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(centre, 0, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(centre, 1, window_length=180, polyorder=3),
             ),
             axis=1,
         )
@@ -57,12 +58,14 @@ def main(args: argparse.Namespace):
     ax.scatter(
         outside[:, 0],
         outside[:, 1],
-        color="red",
+        cmap=mpl.colormaps["autumn"],
+        c=np.arange(len(outside)) / len(outside),
     )
     ax.scatter(
         inside[:, 0],
         inside[:, 1],
-        color="blue",
+        cmap=mpl.colormaps["winter"],
+        c=np.arange(len(inside)) / len(inside),
     )
     ax.scatter(
         centre[:, 0],
@@ -72,7 +75,7 @@ def main(args: argparse.Namespace):
 
     ax.set_aspect(1)
     plt.gray()
-    plt.savefig(f"{title}.png")
+    plt.savefig(f"track_maps/{title}.png")
     plt.show()
 
 

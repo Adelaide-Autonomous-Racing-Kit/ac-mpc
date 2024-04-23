@@ -1,7 +1,7 @@
 experiment_name: 'vallelunga_audi'
 save_path: "data/testing"
 evaluation: False
-multithreading: False
+multithreading: True
 test: False
 seed: 0
 vehicle:
@@ -31,7 +31,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/vallelunga_not_verysmooth_0.npy
+    map_path: track_maps/vallelunga_verysmooth.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -46,9 +46,9 @@ mapping:
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: True
+    collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: False
+    use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:

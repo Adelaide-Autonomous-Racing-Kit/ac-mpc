@@ -101,13 +101,16 @@ class SpatialMPC:
             ay_max = self.SpeedProfileConstraints["ay_max"]
         else:
             logger.error(
-                f"Overwriting ay max with: {ay_max_overwrite}, remove this later"
+                f"Overwriting ay max with: {ay_max_overwrite}, remove this later?"
             )
             ay_max = ay_max_overwrite
 
         if a_min_overwrite is None:
             a_min = np.ones(N - 1) * self.SpeedProfileConstraints["a_min"]
         else:
+            logger.error(
+                f"Overwriting a min with: {a_min_overwrite}, remove this later?"
+            )
             a_min = np.ones(N - 1) * a_min_overwrite
 
         # Inequality Matrix
