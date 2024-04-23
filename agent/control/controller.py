@@ -52,9 +52,8 @@ def build_mpc(control_cfg: Dict, vehicle_data):
 
 
 class Controller:
-    def __init__(self, cfg: Dict, perciever: Perceiver):
-        self._controller = ControlProcess(cfg, perciever)
-        self._controller.start()
+    def __init__(self, cfg: Dict, perceiver: Perceiver):
+        self.__setup(cfg, perceiver)
 
     @property
     def delta_max(self) -> float:
@@ -73,13 +72,14 @@ class Controller:
         mpc = self._controller.model_predictive_controller
         return mpc.construct_waypoints(path)
 
-    def compute_speed_profile(
-        self, path: np.array, ay_max_overwrite=None, a_min_overwrite=None
-    ) -> np.array:
+    def compute_track_speed_profile(self, track: np.array) -> np.array:
         mpc = self._controller.model_predictive_controller
-        return mpc.compute_speed_profile(
-            path, ay_max_overwrite=ay_max_overwrite, a_min_overwrite=a_min_overwrite
+        speed_profile = mpc.compute_speed_profile(
+            track,
+            ay_max_overwrite=self._track_ay_max,
+            a_min_overwrite=self._track_a_min,
         )
+        return speed_profile
 
     @property
     def reference_speed(self) -> float:
@@ -95,6 +95,16 @@ class Controller:
 
     def shutdown(self):
         self._controller.is_running = False
+
+    def __setup(self, cfg: Dict, perceiver: Perceiver):
+        self._unpack_config(cfg)
+        self._controller = ControlProcess(cfg, perceiver)
+        self._controller.start()
+
+    def _unpack_config(self, cfg: Dict):
+        profile_cfg = cfg["racing"]["map_speed_profile_constraints"]
+        self._track_ay_max = profile_cfg["ay_max"]
+        self._track_a_min = profile_cfg["a_min"]
 
 
 class ControlProcess(mp.Process):

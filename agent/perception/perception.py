@@ -85,14 +85,14 @@ class Perceiver:
             original_size = obs["CameraFrontRGB"].shape
             if self._is_first_resize:
                 message = "Resizing images from  "
-                message = f"{original_size[0]}x{original_size[1]} "
+                message = f"{original_size[1]}x{original_size[0]} "
                 message += f"to {self.image_width}x{self.image_height}."
                 logger.warning(message)
                 self._is_first_resize = False
             obs["CameraFrontRGB"] = cv2.resize(
                 obs["CameraFrontRGB"],
                 dsize=(self.image_width, self.image_height),
-                interpolation=cv2.INTER_CUBIC,
+                interpolation=cv2.INTER_LINEAR,
             )
 
     def _is_image_size_correct(self, image: np.array) -> bool:

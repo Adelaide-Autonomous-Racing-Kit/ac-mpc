@@ -249,24 +249,12 @@ class ElTuarMPC(AssettoCorsaInterface):
             ]
         ).T
         reference_path = self.controller.construct_waypoints(centre_track)
-        for waypoint in reference_path:
-            if 0.001 > waypoint["dist_ahead"] > -0.001:
-                logger.info(
-                    f"Zero Distance Waypoint at: ({waypoint['x']}, {waypoint['y']})"
-                )
-        reference_path = self.controller.compute_speed_profile(
-            reference_path,
-            ay_max_overwrite=7.0,
-            a_min_overwrite=-0.3,
-        )
-
+        reference_path = self.controller.compute_track_speed_profile(reference_path)
         plot_ref_path = np.array(
             [[val["x"], val["y"], val["v_ref"]] for i, val in enumerate(reference_path)]
         ).T
-        logger.debug(plot_ref_path)
         self._plot_speed_profile(plot_ref_path)
         self.reference_speeds = savgol_filter(plot_ref_path[2], 21, 3)
-        logger.debug(f"{self.reference_speeds}")
 
     def _plot_speed_profile(self, ref_path: np.array):
         fig = plt.figure(dpi=300)
