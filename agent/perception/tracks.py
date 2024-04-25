@@ -9,7 +9,7 @@ from monitor.system_monitor import track_runtime
 
 class TrackLimitPerception:
     def __init__(self, cfg: Dict):
-        self._use_interpolated_centreline = cfg["centerline_from_tack_limits"]
+        self._use_interpolated_centreline = cfg["centerline_from_track_limits"]
         self._image_width = cfg["image_width"]
         self._n_polyfit_points = cfg["n_polyfit_points"]
         self._n_rows_to_remove = cfg["n_rows_to_remove_bonnet"]

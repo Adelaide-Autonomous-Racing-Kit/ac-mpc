@@ -34,6 +34,7 @@ class VisualisationProcess(mp.Process):
         super().__init__()
         self._agent = agent
         self.__setup(cfg)
+        self._frame_count = 0
 
     @property
     def is_running(self) -> bool:

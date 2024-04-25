@@ -26,7 +26,7 @@ perception:
     image_height: 736
     n_polyfit_points: 500
     n_rows_to_remove_bonnet: 600
-    centerline_from_tack_limits: False
+    centerline_from_track_limits: False
     vertical_fov_deg: 60
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
