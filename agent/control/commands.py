@@ -4,21 +4,54 @@ from typing import List
 import numpy as np
 
 
-class TemporalCommandInterpolator:
-    def __init__(self, mpc: SpatialMPC):
-        self._MPC = mpc
-    
+class TemporalCommandSelector:
+    def __init__(self, controller: ControlProcess):
+        self._controller = controller
+
     @property
     def _cum_time(self) -> np.array:
-        return self._MPC.cum_time
-    
+        return self._controller.control_cumtime
+
     @property
     def _commands(self) -> np.array:
-        return self._MPC.projected_control.T
-    
+        return self._controller.control_inputs  # .T
+
     def __call__(self, elapsed_time: float) -> np.array:
         return self.get_command(elapsed_time)
-        
+
+    def get_command(self, elapsed_time: float) -> np.array:
+        index = self._get_closet_command_index(elapsed_time)
+        n_commands = len(self._commands)
+        index = index if index < n_commands else n_commands - 1
+        command = self._commands[index]
+        return command
+
+    def _get_closet_command_index(self, elapsed_time: float) -> int:
+        distances = self._calculate_temporal_distances(elapsed_time)
+        index = np.argmin(abs(distances))
+        if distances[index] > 0:
+            index - 1
+        return index
+
+    def _calculate_temporal_distances(self, elapsed_time: float) -> np.array:
+        return self._cum_time - elapsed_time
+
+
+class TemporalCommandInterpolator:
+    def __init__(self, controller: ControlProcess):
+        self._controller = controller
+
+    @property
+    def _cum_time(self) -> np.array:
+        return self._controller.control_cumtime
+
+    @property
+    def _commands(self) -> np.array:
+        return self._controller.control_inputs.T
+
+    def __call__(self, elapsed_time: float) -> np.array:
+        return self.get_command(elapsed_time)
+
     def get_command(self, elapsed_time: float) -> np.array:
         index_a, index_b = self._get_indices_of_commands_to_interpolate(elapsed_time)
         return self._interpolate_command(index_a, index_b, elapsed_time)

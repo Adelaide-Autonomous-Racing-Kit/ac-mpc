@@ -7,7 +7,7 @@ def draw_track_lines_on_bev(bev, scale, list_of_lines, colour=(255, 0, 255)):
     for track_line in list_of_lines:
         track_line = (track_line * scale).astype(np.int32)
         track_line[:, 0] = track_line[:, 0] + bev.shape[0] / 2
-        # track_line[:, 1] = bev.shape[1] - track_line[:, 1]
+        # track_line[:, 1] = bev.shape[1] / 2 + track_line[:, 1]
 
         for i in range(len(track_line) - 2):
             cv2.line(
@@ -17,6 +17,7 @@ def draw_track_lines_on_bev(bev, scale, list_of_lines, colour=(255, 0, 255)):
                 color=colour,
                 thickness=1,
             )
+            cv2.circle(bev, track_line[i], 1, colour, 1)
 
 
 def transform_track_points(points, translation, rotation):

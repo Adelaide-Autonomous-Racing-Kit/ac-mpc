@@ -7,103 +7,61 @@ from loguru import logger
 import segmentation_models_pytorch as smp
 
 
-from models.efficientnet_v2 import EfficientNetV2_FPN_Segmentation
-from models.deeplab import resnet, deeplabv3plus
-from monitor.system_monitor import track_runtime
-
-# V2 FPN
-COLOUR_LIST = np.array(
-    [
-        (84, 84, 84),
-        (255, 119, 51),
-        (255, 255, 255),
-        (255, 255, 0),
-        (170, 255, 128),
-        (255, 42, 0),
-        (153, 153, 255),
-        (0, 255, 238),
-        (255, 179, 204),
-        (0, 102, 17),
-        (0, 0, 255),
-        (0, 0, 0),
-    ]
-)
-# V3 drivable FPN
-COLOUR_LIST = np.array(
-    [
-        (0, 0, 0),
-        (0, 255, 249),
-        (84, 84, 84),
-        (255, 119, 51),
-        (255, 255, 255),
-        (255, 255, 0),
-        (170, 255, 128),
-        (255, 42, 0),
-        (153, 153, 255),
-        (255, 179, 204),
-    ]
-)
-
-
 class TrackSegmenter:
     def __init__(self, cfg: Dict):
-        self.model = self.load_segmentation_model(cfg["model_path"])
+        self.__setup_config(cfg)
 
-    def load_segmentation_model(self, path):
-        """
-        Load model checkpoints.
-        """
+    def __setup_config(self, cfg: Dict):
+        self._model_weights_path = cfg["model_path"]
+        self._width = cfg["image_width"]
+        self._height = cfg["image_height"]
+        self._compile_model = cfg["compile_model"]
+
+    def _setup_device(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         if self.device != "cuda":
             logger.info(f"[POD INFO] #CPUS: {os.cpu_count()}")
             logger.error("[RUNTIME ERROR] Experiment not running on a gpu")
             raise Exception("MODEL MUST BE ON GPU, ABORT")
         else:
+            vram = torch.cuda.get_device_properties(0).total_memory
             logger.info(
                 f"[POD INFO] #CPUS: {os.cpu_count()} "
                 f"Device name: {torch.cuda.get_device_name(0)} "
-                f"Max memory: {torch.cuda.get_device_properties(0).total_memory/1e9:.2f}GB"
+                f"Max memory: {vram / 1e9:.2f}GB"
             )
-        # model = EfficientNetV2_FPN_Segmentation(
-        #    version="efficientnet_v2_s", im_c=3, n_classes=2
-        # ).to(self.device)
 
-        # encoder = resnet.ResnetEncoder(resnet.build("18", False), 16)
-        # model = deeplabv3plus.DeepLabV3plus(encoder, 10).to(self.device)
-
-        model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10).to(
-            self.device
-        )
-        modified_state_dict = {}
-        state_dict = torch.load(path)["state_dict"]
-        for key in state_dict.keys():
-            modified_state_dict[key.replace("_model.", "")] = state_dict[key]
-        model.load_state_dict(modified_state_dict)
+    def _setup_segmentation_model(self):
+        """
+        Load model checkpoints
+        """
+        self._setup_device()
+        model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10)
+        model.load_state_dict(torch.load(self._model_weights_path))
         model.eval()
-        return model
+        model.to(self.device)
+        if self._compile_model:
+            logger.info("Compiling segmentation model with torch.compile...")
+            model = torch.compile(model, mode="reduce-overhead")
+            dummy_input = torch.randn(
+                1,
+                3,
+                self._height,
+                self._width,
+                device=self.device,
+            )
+            model(dummy_input)
+        self.model = model
 
-    def add_inferred_segmentation_masks(self, obs: Dict):
-        images = obs.get_images()
-        image_tensor = self.images_to_tensor(images)
-        masks, vis = self.segment_drivable_area(image_tensor)
-        obs.add_segmentation_masks(masks)
-        obs["vis"] = vis
-
-    def images_to_tensor(self, images: np.array) -> torch.Tensor:
-        x = np.stack(images) / 255
+    def _image_to_tensor(self, image: np.array) -> torch.Tensor:
+        x = np.stack([image]) / 255
         x = torch.as_tensor(x, dtype=torch.float32, device=self.device)
         return x.permute(0, 3, 1, 2)
 
-    @track_runtime
-    def segment_drivable_area(self, x: torch.Tensor) -> np.array:
+    def segment_drivable_area(self, x: np.array):
+        x = self._image_to_tensor(x)
         output = self.model.predict(x)
         output = torch.argmax(output, dim=1).cpu().numpy().astype(np.uint8)
-        vis = np.squeeze(np.array(COLOUR_LIST[output], dtype=np.uint8))
-        # FPN v2
-        # output[output != 0] = 1
-        # output[output == 0] = 2
-        # output -= 1
-        # output[output != 1] = 0
-        # FPN v3
+        vis = np.copy(output)
         output[output > 1] = 0
-        return output, vis
+        return np.squeeze(output), vis

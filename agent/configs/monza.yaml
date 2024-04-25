@@ -1,0 +1,96 @@
+experiment_name: 'monza_audi'
+save_path: "data/testing"
+evaluation: False
+multithreading: True
+test: False
+seed: 0
+vehicle:
+    data_path: "data/audi_r8_lms_2016"
+debugging:
+    birds_eye_view_scale: 4
+    birds_eye_view_size: 200
+    show_camera: False
+    show_control_image: True
+    show_localisation_map: True
+    show_segmentation: True
+    show_visualised_predictions: False
+    verbose: True
+data_collection:
+    collect_images: 0
+perception:
+    model_segmentation: True
+    model_path: "agent/models/checkpoints/monza-fpn-resnet-18-v1.pt"
+    single_cam: True
+    compile_model: False
+    image_width: 1280
+    image_height: 736
+    n_polyfit_points: 500
+    n_rows_to_remove_bonnet: 600
+    centerline_from_track_limits: False
+    vertical_fov_deg: 60
+    position: [0.0, 1.45000, 0.56000]
+    pitch_deg: 2.889419
+mapping:
+    map_path: track_maps/monza_verysmooth.npy
+    create_map: False
+    number_of_mapping_laps: 1
+    control:
+        horizon: 100
+        speed_profile_constraints:
+            v_min: 5.0
+            v_max: 20.0
+            a_min: -3.0
+            a_max: 6.0
+            ay_max: 2.0
+        step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-6, 1.0e+1] # velocity, steering
+        final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
+localisation:
+    collect_benchmark_observations: True
+    benchmark_observations_save_location: localisation_data
+    use_localisation: True
+    n_particles: 500
+    n_converged_particles: 500
+    sampling_noise:
+        x: 1.0
+        y: 1.0
+        yaw: 2 # degrees
+    control_noise:
+        velocity: 2
+        yaw:  0.16 # degrees
+    thresholds:
+        offset: 10
+        rotation: 90 # deg
+        minimum_particles: 20
+        track_limit: 1.0e+6 
+    score_distribution:
+        mean: 0
+        sigma: 10
+    convergence_criteria:
+        maximum_distance: 50
+        maximum_angle: 90 # deg
+racing:
+    control:
+        horizon: 100
+        unlocalised_max_speed: 32
+        speed_profile_constraints:
+            v_min: 5.0
+            v_max: 84.0
+            a_min: -0.30
+            a_max: 1.0
+            ay_max: 5.5
+        step_cost: [5.0e-4, 5.0e-2, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-2, 10.0] # velocity, steering
+        final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
+    map_speed_profile_constraints:
+        ay_max: 24.5
+        a_min: -0.15
+aci:
+    race.ini:
+        RACE:
+            TRACK: "monza"
+            CONFIG_TRACK: ""
+    capture:
+        use_rgb_images: False
+        use_state_dicts: True
+        wait_for_new_frames: False

@@ -66,7 +66,6 @@ class MapMaker:
 
         return outside_points_should_go_forward
 
-
     def save_map(self, filename):
         outsides = []
         for points_at_timestep in self.outside_track:
@@ -119,19 +118,19 @@ class MapMaker:
 
         # Remove near duplicate centre points
         d = np.diff(centres, axis=0)
-        dists = np.hypot(d[:,0], d[:,1])
+        dists = np.hypot(d[:, 0], d[:, 1])
         is_not_duplicated = np.ones(dists.shape[0] + 1).astype(bool)
         is_not_duplicated[1:] = dists > 0.0001
         outsides = outsides[is_not_duplicated]
         insides = insides[is_not_duplicated]
         centres = centres[is_not_duplicated]
-            
+
         output_map = {
             "outside_track": outsides,
             "inside_track": insides,
             "centre_track": centres,
         }
-        np.save(filename + ".npy", output_map, allow_pickle=True)
+        np.save(filename, output_map, allow_pickle=True)
         self.map_built = True
 
     @staticmethod
@@ -150,7 +149,12 @@ class MapMaker:
 
     @staticmethod
     def smooth_boi(arr, i, window_length=15, polyorder=1):
-        return savgol_filter([p[i] for p in arr], window_length=window_length, polyorder=polyorder)
+        return savgol_filter(
+            [p[i] for p in arr],
+            window_length=window_length,
+            polyorder=polyorder,
+            mode="wrap",
+        )
 
     @staticmethod
     def upsample_track(track, desired_density=0.5):

@@ -1,7 +1,6 @@
 import math
 
 import numpy as np
-from loguru import logger
 from scipy.spatial.transform import Rotation as R
 from scipy.interpolate import UnivariateSpline
 
@@ -25,7 +24,8 @@ class CameraInfo:
         self._init_homographies()
 
     def validate_camera_height(self):
-        assert self.position[2] > 0.0, "You cannot have a camera below the ground"
+        message = "You cannot have a camera below the ground"
+        assert self.position[2] > 0.0, message
 
     def _init_focal_length(self):
         self.focal_length = self.height / (
@@ -100,8 +100,8 @@ class CameraInfo:
     @staticmethod
     def make_homogeneous(points):
         number_of_points = points.shape[0]
-        homogeneous_points = np.hstack([points, np.ones((number_of_points, 1))])
-        return homogeneous_points
+        homogeneous_points = [points, np.ones((number_of_points, 1))]
+        return np.hstack(homogeneous_points)
 
 
 def smooth_track_with_polyfit(track, num_points, degree=3):
@@ -109,8 +109,12 @@ def smooth_track_with_polyfit(track, num_points, degree=3):
         xnew = np.linspace(0, 0.1, num_points)
         ynew = np.linspace(0, 2, num_points)
         return np.array([xnew, ynew]).T
-    ynew = np.linspace(0, np.max(track[:, 1]), num_points)
+    ynew = np.linspace(0, np.max(track[:, 1]), 500)
     coeffs = np.polyfit(track[:, 1], track[:, 0], degree)
+    xnew = np.polyval(coeffs, ynew)
+    newpoints = np.array([xnew, ynew]).T
+    start_index = np.argmin(np.linalg.norm(newpoints, axis=1))
+    ynew = np.linspace(ynew[start_index], np.max(track[:, 1]), num_points)
     xnew = np.polyval(coeffs, ynew)
     return np.array([xnew, ynew]).T
 

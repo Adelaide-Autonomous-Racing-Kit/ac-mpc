@@ -77,7 +77,6 @@ class SpatialBicycleModel:
         ###################
         # System Matrices #
         ###################
-
         # Construct Jacobian Matrix
         a_1 = np.array([1, delta_s, 0])
         a_2 = np.array([-(kappa_ref ** 2) * delta_s, 1, 0])
