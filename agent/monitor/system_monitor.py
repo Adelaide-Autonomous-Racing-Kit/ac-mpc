@@ -64,7 +64,6 @@ class SystemMonitor:
     def maybe_log_select_action_summary(self):
         if self.is_verbose() and self.is_logging_interval():
             self.log_processing_time()
-            self.log_vehicle_speed
             self.log_function_runtimes_times()
 
     def log_processing_time(self):

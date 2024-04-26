@@ -49,7 +49,8 @@ def main(args: argparse.Namespace):
             "inside_track": inside,
             "centre_track": centre,
         }
-        np.save(args.output_path, output_map, allow_pickle=True)
+        if args.output_path:
+            np.save(args.output_path, output_map, allow_pickle=True)
         title += " smoothed"
 
     fig = plt.figure()
