@@ -14,6 +14,7 @@ from aci.interface import AssettoCorsaInterface
 
 from control.controller import Controller
 from dashboard.dashboard import DashBoardProcess
+from control.pid import ControlPID
 from localisation.localiser import Localiser
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
@@ -51,20 +52,29 @@ class ElTuarMPC(AssettoCorsaInterface):
     def control_input(self) -> np.array:
         desired_velocity, desired_yaw = self.controller.desired_state
         steering_angle = self._process_yaw(desired_yaw)
-        raw_acceleration = self._calculate_acceleration(desired_velocity)
-        throttle, brake = self._calculate_commands(raw_acceleration)
+        acceleration = self._calculate_acceleration(desired_velocity)
+        throttle, brake = self._calculate_commands(acceleration)
         return np.array([steering_angle, brake, throttle])
 
     def _process_yaw(self, yaw: float) -> float:
         max_steering_angle = self.controller.delta_max
         steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
+        if self._is_using_steering_pid:
+            # TODO: Check steering angel from pose units
+            current_steering = self._pose["steering_angle"]
+            steering_angle = self._steering_pid(current_steering, steering_angle)
         self.steering_command = steering_angle
         return steering_angle
 
-    def _calculate_acceleration(self, desired_velocity: float) -> float:
-        max_acceleration = self.controller.a_max
-        target = (desired_velocity - self.pose["velocity"]) / 4
-        return np.clip(target, -1.0, max_acceleration)
+    def _calculate_acceleration(self, target_velocity: float) -> float:
+        current_velocity = self.pose["velocity"]
+        if self._is_using_acceleration_pid:
+            acceleration = self._acceleration_pid(current_velocity, target_velocity)
+        else:
+            max_acceleration = self.controller.a_max
+            delta = (target_velocity - current_velocity) / 4
+            acceleration = np.clip(delta, -1.0, max_acceleration)
+        return acceleration
 
     def _calculate_commands(self, acceleration: float) -> List[float]:
         acceleration = np.clip(acceleration, -1.0, 1.0)
@@ -295,7 +305,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._setup_perception()
         self._setup_controller()
         self._setup_mapper()
-        self._setup_controller()
         self._setup_localisation()
         self._setup_monitoring()
 
@@ -337,6 +346,12 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _setup_controller(self):
         self.controller = Controller(self.cfg, self.perception)
+        pid_cfg = self.cfg["acceleration_pid"]
+        self._is_using_acceleration_pid = pid_cfg["use_acceleration_pid"]
+        self._acceleration_pid = ControlPID(pid_cfg)
+        pid_cfg = self.cfg["steering_pid"]
+        self._is_using_steering_pid = pid_cfg["use_steering_pid"]
+        self._steering_pid = ControlPID(self.cfg["steering_pid"])
 
     def _setup_mapper(self):
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
