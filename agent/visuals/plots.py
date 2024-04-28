@@ -19,6 +19,11 @@ def _get_transformed_points(track: np.array, index: int, state: np.array) -> np.
     return utils.transform_track_points(track, state[:2], map_rot)
 
 
+def get_blank_canvas(self, dimension: int, scale: int) -> np.array:
+    bev_size = dimension * scale
+    return np.zeros((bev_size, bev_size, 3), dtype=np.uint8)
+
+
 def draw_localisation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
     localiser = agent.localiser
     if not (localiser and localiser.is_localised):
