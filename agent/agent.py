@@ -350,5 +350,5 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _setup_monitoring(self):
         System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
-        self.visualiser = DashBoardProcess(self, self.cfg["debugging"])
+        self.visualiser = DashBoardProcess(self, self.cfg)
         self.visualiser.start()

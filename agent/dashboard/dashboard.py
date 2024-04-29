@@ -12,6 +12,7 @@ from dashboard.backend.feeds import (
     CameraFeed,
     ControlFeed,
     LocalisationFeed,
+    MapFeed,
     SegmentationFeed,
     SemanticFeed,
     VisualisationProvider,
@@ -34,7 +35,7 @@ VISUALISATION_FEEDS = {
     "controlFeed": ControlFeed,
     "predictionsFeed": SemanticFeed,
     "localLocalisationFeed": LocalisationFeed,
-    # "mapLocalisationFeed": ,
+    "mapLocalisationFeed": MapFeed,
 }
 
 

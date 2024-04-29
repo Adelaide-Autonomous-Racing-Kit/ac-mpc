@@ -8,6 +8,8 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
 
+from utils import load
+from visuals.utils import draw_track_line, draw_arrow
 from visuals.plots import (
     COLOUR_LIST,
     draw_control_map,
@@ -82,8 +84,8 @@ class VisualisationThread(FeedThread):
 
     def _unpack_config(self, cfg: Dict):
         self._cfg = cfg
-        self._dimension = cfg["birds_eye_view_size"]
-        self._scale = cfg["birds_eye_view_scale"]
+        self._dimension = cfg["debugging"]["birds_eye_view_size"]
+        self._scale = cfg["debugging"]["birds_eye_view_scale"]
 
     @abc.abstractmethod
     def _plot_visualisation(self) -> np.array:
@@ -128,6 +130,72 @@ class LocalisationFeed(VisualisationThread):
     def _plot_visualisation(self) -> np.array:
         canvas = get_blank_canvas(self._dimension, self._scale)
         return draw_localisation_map(self._agent, canvas)
+
+
+MONZA_X_LIMIT = [-1200, 300]
+MONZA_Y_LIMIT = [-1400, 1000]
+ARROW_LENGTH = 25
+
+
+class MapFeed(VisualisationThread):
+    def __init__(self, agent: ElTuarMPC, cfg: Dict, parent=None):
+        super().__init__(agent, cfg, parent)
+        self._setup_map_frame(cfg["mapping"]["map_path"])
+
+    def _setup_map_frame(self, map_path: str):
+        self._map = load.track_map(map_path)
+        self._map_frame = np.zeros((1500, 2400, 3))
+        self._draw_map()
+
+    def _draw_map(self):
+        centre_track = self._transform_points(self._map["centre"])
+        draw_track_line(self._map_frame, centre_track, (255, 255, 255), 10)
+        left_track = self._transform_points(self._map["left"])
+        draw_track_line(self._map_frame, left_track, (0, 0, 255), 2)
+        right_track = self._transform_points(self._map["right"])
+        draw_track_line(self._map_frame, right_track, (0, 0, 255), 2)
+        self._draw_finish_line()
+
+    def _transform_points(self, points: np.array) -> np.array:
+        return points + np.array([1500, 2400])
+
+    def _draw_finish_line(self):
+        finish_line = [
+            [self._map["left"][0, 0], self._map["right"][0, 0]],
+            [self._map["left"][0, 1], self._map["right"][0, 1]],
+        ]
+        finish_line = self._transform_points(finish_line)
+        draw_track_line(self._map_frame, finish_line, (0, 0, 255), 4)
+
+    def _plot_visualisation(self) -> np.array:
+        map_frame = np.copy(self._map_frame)
+        self._draw_ego_position(map_frame)
+        self._draw_estimated_position(map_frame)
+        return map_frame
+
+    def _draw_ego_position(self, map_frame: np.array):
+        pose = self._agent.game_pose
+        position = np.array([pose["x"], pose["y"]])
+        position = self._transform_points(position)
+        draw_arrow(
+            map_frame,
+            position,
+            pose["yaw"],
+            ARROW_LENGTH,
+            4,
+        )
+
+    def _draw_estimated_position(self, map_frame: np.array):
+        x, y, yaw = self._agent.localiser.estimated_position
+        position = np.array([x, y])
+        position = self._transform_points(position)
+        draw_arrow(
+            map_frame,
+            position,
+            yaw,
+            ARROW_LENGTH,
+            4,
+        )
 
 
 class VisualisationProvider(QQuickImageProvider):

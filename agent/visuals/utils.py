@@ -1,6 +1,7 @@
+from typing import Tuple
+
 import cv2
 import numpy as np
-from loguru import logger
 
 
 def draw_track_lines_on_bev(bev, scale, list_of_lines, colour=(255, 0, 255)):
@@ -9,15 +10,40 @@ def draw_track_lines_on_bev(bev, scale, list_of_lines, colour=(255, 0, 255)):
         track_line[:, 0] = track_line[:, 0] + bev.shape[0] / 2
         # track_line[:, 1] = bev.shape[1] / 2 + track_line[:, 1]
 
-        for i in range(len(track_line) - 2):
-            cv2.line(
-                bev,
-                track_line[i],
-                track_line[i + 1],
-                color=colour,
-                thickness=1,
-            )
-            cv2.circle(bev, track_line[i], 1, colour, 1)
+        draw_track_line(bev, track_line, colour, 1)
+
+
+def draw_track_line(
+    canvas: np.array,
+    line: np.array,
+    colour: Tuple[int],
+    thickness: float,
+):
+    for i in range(len(line) - 2):
+        cv2.line(
+            canvas,
+            line[i],
+            line[i + 1],
+            color=colour,
+            thickness=thickness,
+        )
+
+
+def draw_arrow(
+    canvas: np.array,
+    start: np.array,
+    direction: float,
+    length: int,
+    colour: Tuple[int],
+    thickness: float,
+):
+    end = start + np.array(
+        [
+            length * np.cos(direction),
+            length * np.sin(direction),
+        ]
+    )
+    cv2.arrowedLine(canvas, start, end, colour, thickness)
 
 
 def transform_track_points(points, translation, rotation):
