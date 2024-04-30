@@ -3,13 +3,28 @@ from typing import Tuple
 import cv2
 import numpy as np
 
+# V3 drivable FPN
+COLOUR_LIST = np.array(
+    [
+        (0, 0, 0),
+        (0, 255, 249),
+        (84, 84, 84),
+        (255, 119, 51),
+        (255, 255, 255),
+        (255, 255, 0),
+        (170, 255, 128),
+        (255, 42, 0),
+        (153, 153, 255),
+        (255, 179, 204),
+    ],
+    dtype=np.uint8,
+)
+
 
 def draw_track_lines_on_bev(bev, scale, list_of_lines, colour=(255, 0, 255)):
     for track_line in list_of_lines:
         track_line = (track_line * scale).astype(np.int32)
         track_line[:, 0] = track_line[:, 0] + bev.shape[0] / 2
-        # track_line[:, 1] = bev.shape[1] / 2 + track_line[:, 1]
-
         draw_track_line(bev, track_line, colour, 1)
 
 

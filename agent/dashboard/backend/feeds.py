@@ -1,18 +1,18 @@
 from __future__ import annotations
 import abc
+import time
+from collections import namedtuple
 from typing import Dict
 
 import cv2
 import numpy as np
-from loguru import logger
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
 
 from utils import load
-from visuals.utils import draw_track_line, draw_arrow
-from visuals.plots import (
-    COLOUR_LIST,
+from dashboard.visualisation.utils import COLOUR_LIST, draw_track_line, draw_arrow
+from dashboard.visualisation.plots import (
     draw_control_map,
     draw_localisation_map,
     get_blank_canvas,
@@ -52,6 +52,7 @@ class FeedThread(QThread):
                 QImage.Format.Format_RGB888,
             )
             self.updateFrame.emit(image)
+            time.sleep(0.02)
         self._teardown()
 
 
@@ -105,7 +106,8 @@ class VisualisationThread(FeedThread):
 
 class CameraFeed(VisualisationThread):
     def _plot_visualisation(self) -> np.array:
-        return self._agent.perception.input_image
+        input_image = self._agent.perception.input_image
+        return cv2.cvtColor(input_image, cv2.COLOR_RGB2BGR)
 
 
 class SegmentationFeed(VisualisationThread):
@@ -118,7 +120,7 @@ class SemanticFeed(VisualisationThread):
     def _plot_visualisation(self) -> np.array:
         semantics = self._agent.perception.output_visualisation
         semantics = np.squeeze(np.array(COLOUR_LIST[semantics], dtype=np.uint8))
-        return semantics
+        return cv2.cvtColor(semantics, cv2.COLOR_RGB2BGR)
 
 
 class ControlFeed(VisualisationThread):
@@ -133,33 +135,47 @@ class LocalisationFeed(VisualisationThread):
         return draw_localisation_map(self._agent, canvas)
 
 
-MONZA_X_LIMIT = [-1200, 300]
-MONZA_Y_LIMIT = [-1400, 1000]
+MapVisualisationLimit = namedtuple("MapLimit", ["x_min", "x_max", "y_min", "y_max"])
+MAP_VISUALISATION_LIMITS = {
+    "monza": MapVisualisationLimit(-1100, 300, -1400, 1000),
+    "spa": MapVisualisationLimit(-700, 700, -1020, 1120),
+    "ks_vallelunga": MapVisualisationLimit(-640, 740, -260, 360),
+    "ks_silverstone": MapVisualisationLimit(-560, 560, -900, 900),
+}
+
 ARROW_LENGTH = 25
 
 
 class MapFeed(VisualisationThread):
     def __init__(self, agent: ElTuarMPC, cfg: Dict, parent=None):
         super().__init__(agent, cfg, parent)
+        self._setup_map_feed(cfg)
+
+    def _setup_map_feed(self, cfg: Dict):
+        self._track_name = cfg["aci"]["race.ini"]["RACE"]["TRACK"]
+        self._map_limits = MAP_VISUALISATION_LIMITS[self._track_name]
+        self._translation = np.array(
+            [-self._map_limits.x_min, -self._map_limits.y_min], dtype=np.int32
+        )
         self._setup_map_frame(cfg["mapping"]["map_path"])
 
     def _setup_map_frame(self, map_path: str):
+        self._setup_map_canvas()
         self._map = load.track_map(map_path)
-        self._map_frame = np.zeros((1500, 2400, 3))
         self._draw_map()
+
+    def _setup_map_canvas(self) -> np.array:
+        x_extent = self._map_limits.x_max - self._map_limits.x_min
+        y_extent = self._map_limits.y_max - self._map_limits.y_min
+        self._map_frame = np.zeros((y_extent, x_extent, 3), dtype=np.uint8)
 
     def _draw_map(self):
         centre_track = self._transform_points(self._map["centre"])
-
-        draw_track_line(self._map_frame, centre_track, (255, 255, 255), 10)
-        left_track = self._transform_points(self._map["left"])
-        draw_track_line(self._map_frame, left_track, (0, 0, 255), 2)
-        right_track = self._transform_points(self._map["right"])
-        draw_track_line(self._map_frame, right_track, (0, 0, 255), 2)
+        draw_track_line(self._map_frame, centre_track, (255, 255, 255), 40)
         self._draw_finish_line()
 
     def _transform_points(self, points: np.array) -> np.array:
-        return points.astype(np.int32) + np.array([1200, 1400])
+        return points.astype(np.int32) + self._translation
 
     def _draw_finish_line(self):
         finish_line = np.array(
@@ -169,17 +185,18 @@ class MapFeed(VisualisationThread):
             ]
         )
         finish_line = self._transform_points(finish_line)
-        draw_track_line(self._map_frame, finish_line, (0, 0, 255), 4)
+        draw_track_line(self._map_frame, finish_line, (0, 0, 255), 20)
 
     def _plot_visualisation(self) -> np.array:
         map_frame = np.copy(self._map_frame)
         self._draw_ego_position(map_frame)
         self._draw_estimated_position(map_frame)
-        return map_frame
+        return cv2.flip(map_frame, 0)
 
     def _draw_ego_position(self, map_frame: np.array):
         if self._agent.game_pose is None:
             return
+        # TODO: Implement this
         pose = self._agent.game_pose
         position = np.array([pose["x"], pose["y"]])
         position = self._transform_points(position)
@@ -189,7 +206,7 @@ class MapFeed(VisualisationThread):
             pose["yaw"],
             ARROW_LENGTH,
             (0, 255, 0),
-            4,
+            25,
         )
 
     def _draw_estimated_position(self, map_frame: np.array):
@@ -202,7 +219,7 @@ class MapFeed(VisualisationThread):
             yaw,
             ARROW_LENGTH,
             (255, 0, 0),
-            4,
+            25,
         )
 
 

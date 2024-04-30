@@ -226,7 +226,7 @@ GridLayout {
             }
 
             property bool is_started: false
-            text: is_started ?  "Stop Localisation" : "Start Localisation"
+            text: is_started ?  "Stop Map" : "Start Map"
             onClicked: {
                 if (is_started){
                     mapLocalisationFeed.shutdown()

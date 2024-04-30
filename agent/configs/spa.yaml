@@ -9,11 +9,6 @@ vehicle:
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
-    show_camera: False
-    show_control_image: True
-    show_localisation_map: True
-    show_segmentation: True
-    show_visualised_predictions: False
     verbose: True
 data_collection:
     collect_images: 0
