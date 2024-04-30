@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from loguru import logger
 
-from visuals import utils
+from dashboard.visualisation import utils
 
 N_POINTS = 400
 
@@ -19,6 +18,11 @@ def _get_transformed_points(track: np.array, index: int, state: np.array) -> np.
     return utils.transform_track_points(track, state[:2], map_rot)
 
 
+def get_blank_canvas(dimension: int, scale: int) -> np.array:
+    bev_size = dimension * scale
+    return np.zeros((bev_size, bev_size, 3), dtype=np.uint8)
+
+
 def draw_localisation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
     localiser = agent.localiser
     if not (localiser and localiser.is_localised):
@@ -28,15 +32,6 @@ def draw_localisation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
     centre_track = _get_transformed_points(localiser.centre_track, i_centre, state)
     left_track = _get_transformed_points(localiser.left_track, i_left, state)
     right_track = _get_transformed_points(localiser.right_track, i_right, state)
-
-    """
-    left_track1 = smooth_track_with_polyfit(
-        left_track.T, number_of_track_points, degree=4
-    )
-    right_track1 = smooth_track_with_polyfit(
-        right_track.T, number_of_track_points, degree=4
-    )
-    """
     scale = 4
     utils.draw_track_lines_on_bev(canvas, scale, [centre_track], colour=(0, 255, 0))
     utils.draw_track_lines_on_bev(canvas, scale, [left_track], colour=(255, 0, 0))
@@ -53,10 +48,6 @@ def draw_control_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
         utils.draw_track_lines_on_bev(
             canvas, scale, [tracks["centre"]], colour=(0, 255, 0)
         )
-        # logger.info("Original Center track In plot")
-        # utils.draw_track_lines_on_bev(
-        #    canvas, 4, [agent.original_centre_track], colour=(255, 0, 255)
-        # )
         utils.draw_track_lines_on_bev(
             canvas, scale, [tracks["right"]], colour=(0, 0, 255)
         )
@@ -70,34 +61,3 @@ def draw_control_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
     except Exception as e:
         pass
     return canvas
-
-
-def draw_segmentation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
-    return np.transpose(agent.perception.output_mask, axes=(1, 2, 0)) * 255
-
-
-# V3 drivable FPN
-COLOUR_LIST = np.array(
-    [
-        (0, 0, 0),
-        (0, 255, 249),
-        (84, 84, 84),
-        (255, 119, 51),
-        (255, 255, 255),
-        (255, 255, 0),
-        (170, 255, 128),
-        (255, 42, 0),
-        (153, 153, 255),
-        (255, 179, 204),
-    ]
-)
-
-
-def draw_visualised_predictions(agent: ElTuarMPC, canvas: np.array) -> np.array:
-    vis = agent.perception.output_visualisation
-    vis = np.squeeze(np.array(COLOUR_LIST[vis], dtype=np.uint8))
-    return cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
-
-
-def draw_camera_feed(agent: ElTuarMPC, canvas: np.array) -> np.array:
-    return cv2.cvtColor(agent.perception.input_image, cv2.COLOR_BGR2RGB)

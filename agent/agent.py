@@ -13,13 +13,13 @@ from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
 
 from control.controller import Controller
+from dashboard.dashboard import DashBoardProcess
 from localisation.localiser import Localiser
 from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor, track_runtime
 from perception.perception import Perceiver
 from perception.observations import ObservationDict
 from utils import load
-from visuals.visualisation import Visualiser
 
 torch.backends.cudnn.benchmark = True
 
@@ -279,7 +279,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.localiser:
             self.localiser.shutdown()
         self._maybe_record_localisation_data()
-        self.visualiser.shutdown()
+        self.visualiser.terminate()
+        # self.visualiser.shutdown()
 
     def _maybe_record_localisation_data(self):
         if self.localiser and self._is_collecting_localisation_data:
@@ -307,6 +308,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._save_localisation_path = f"{save_path}/{experiment_name}/control.npy"
 
     def _setup_state(self):
+        self.game_pose = None
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0
@@ -349,4 +351,5 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _setup_monitoring(self):
         System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
-        self.visualiser = Visualiser(self, self.cfg["debugging"])
+        self.visualiser = DashBoardProcess(self, self.cfg)
+        self.visualiser.start()
