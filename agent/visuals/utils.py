@@ -41,7 +41,8 @@ def draw_arrow(
         [
             length * np.cos(direction),
             length * np.sin(direction),
-        ]
+        ],
+        dtype=np.int32,
     )
     cv2.arrowedLine(canvas, start, end, colour, thickness)
 

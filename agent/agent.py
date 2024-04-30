@@ -308,6 +308,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._save_localisation_path = f"{save_path}/{experiment_name}/control.npy"
 
     def _setup_state(self):
+        self.game_pose = None
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0

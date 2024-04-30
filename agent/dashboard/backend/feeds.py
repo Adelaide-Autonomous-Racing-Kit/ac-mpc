@@ -4,6 +4,7 @@ from typing import Dict
 
 import cv2
 import numpy as np
+from loguru import logger
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
@@ -149,6 +150,7 @@ class MapFeed(VisualisationThread):
 
     def _draw_map(self):
         centre_track = self._transform_points(self._map["centre"])
+
         draw_track_line(self._map_frame, centre_track, (255, 255, 255), 10)
         left_track = self._transform_points(self._map["left"])
         draw_track_line(self._map_frame, left_track, (0, 0, 255), 2)
@@ -157,13 +159,15 @@ class MapFeed(VisualisationThread):
         self._draw_finish_line()
 
     def _transform_points(self, points: np.array) -> np.array:
-        return points + np.array([1500, 2400])
+        return points.astype(np.int32) + np.array([1200, 1400])
 
     def _draw_finish_line(self):
-        finish_line = [
-            [self._map["left"][0, 0], self._map["right"][0, 0]],
-            [self._map["left"][0, 1], self._map["right"][0, 1]],
-        ]
+        finish_line = np.array(
+            [
+                [self._map["left"][0, 0], self._map["right"][0, 0]],
+                [self._map["left"][0, 1], self._map["right"][0, 1]],
+            ]
+        )
         finish_line = self._transform_points(finish_line)
         draw_track_line(self._map_frame, finish_line, (0, 0, 255), 4)
 
@@ -174,6 +178,8 @@ class MapFeed(VisualisationThread):
         return map_frame
 
     def _draw_ego_position(self, map_frame: np.array):
+        if self._agent.game_pose is None:
+            return
         pose = self._agent.game_pose
         position = np.array([pose["x"], pose["y"]])
         position = self._transform_points(position)
@@ -182,6 +188,7 @@ class MapFeed(VisualisationThread):
             position,
             pose["yaw"],
             ARROW_LENGTH,
+            (0, 255, 0),
             4,
         )
 
@@ -194,6 +201,7 @@ class MapFeed(VisualisationThread):
             position,
             yaw,
             ARROW_LENGTH,
+            (255, 0, 0),
             4,
         )
 
