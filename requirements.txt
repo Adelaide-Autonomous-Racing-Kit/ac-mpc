@@ -4,3 +4,4 @@ git+https://github.com/jvkersch/pyconcorde
 segmentation-models-pytorch
 ruamel.yaml
 matplotlib
+simple-pid
