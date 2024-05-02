@@ -120,8 +120,8 @@ def smooth_track_with_polyfit(track, num_points, degree=3):
 
 
 def smooth_track_with_spline(track, num_points, smooth_factor=1e4):
-    ynew = np.linspace(0, np.max(track[1]), num_points)
-    spl = UnivariateSpline(track[1], track[0])
+    ynew = np.linspace(0, np.max(track[:, 1]), num_points)
+    spl = UnivariateSpline(track[:, 1], track[:, 0])
     spl.set_smoothing_factor(smooth_factor)
     xnew = spl(ynew)
-    return np.array([xnew, ynew])
+    return np.array([xnew, ynew]).T

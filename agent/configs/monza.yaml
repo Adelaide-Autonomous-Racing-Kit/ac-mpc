@@ -14,7 +14,7 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "agent/models/checkpoints/monza-fpn-resnet-18-v1.pt"
+    model_path: "agent/models/checkpoints/monza-fpn-resnet-18-v1.1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -26,9 +26,9 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/monza_verysmooth.npy
+    map_path: track_maps/monza_verysmooth_2.npy
     create_map: False
-    number_of_mapping_laps: 1
+    number_of_mapping_laps: 2
     control:
         horizon: 100
         speed_profile_constraints:
@@ -41,7 +41,7 @@ mapping:
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: True
+    collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
     use_localisation: True
     n_particles: 500
@@ -71,14 +71,14 @@ racing:
         speed_profile_constraints:
             v_min: 5.0
             v_max: 84.0
-            a_min: -0.30
+            a_min: -0.3
             a_max: 1.0
             ay_max: 5.5
-        step_cost: [5.0e-4, 5.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [1.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
-        ay_max: 24.5
+        ay_max: 7.0
         a_min: -0.15
 aci:
     race.ini:

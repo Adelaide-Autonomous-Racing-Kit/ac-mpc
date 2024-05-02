@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import io
 import signal
+import time
 from typing import Dict
 
 import cv2

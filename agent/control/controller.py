@@ -74,10 +74,11 @@ class Controller:
 
     def compute_track_speed_profile(self, track: np.array) -> np.array:
         mpc = self._controller.model_predictive_controller
+        a_min = self._track_a_min
         speed_profile = mpc.compute_speed_profile(
             track,
             ay_max_overwrite=self._track_ay_max,
-            a_min_overwrite=self._track_a_min,
+            a_min_overwrite=a_min,
         )
         return speed_profile
 
