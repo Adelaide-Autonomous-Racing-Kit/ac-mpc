@@ -17,9 +17,7 @@ class ControlPID:
 
     def __call__(self, current: float, target: float) -> float:
         self._pid.setpoint = target
-        control = self._pid(current)
-        logger.debug(self._pid.components)
-        return control
+        return self._pid(current)
 
     def _setup(self, cfg: Dict):
         self._unpack_cfg(cfg)
@@ -51,3 +49,6 @@ class ThrottlePID(ControlPID):
 class BrakePID(ControlPID):
     def _set_control_limits(self):
         self._limits = CONTROL_LIMITS["brake"]
+
+    def __call__(self, current: float, target: float) -> float:
+        return -1.0 * super().__call__(current, target)

@@ -17,7 +17,7 @@ from dashboard.dashboard import DashBoardProcess
 from control.pid import BrakePID, ThrottlePID, SteeringPID
 from localisation.localiser import Localiser
 from mapping.map_maker import MapMaker
-from monitor.system_monitor import System_Monitor, track_runtime
+from monitor.system_monitor import System_Monitor
 from perception.perception import Perceiver
 from perception.observations import ObservationDict
 from utils import load
@@ -57,35 +57,17 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _process_yaw(self, yaw: float) -> float:
         max_steering_angle = self.controller.delta_max
-        steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
-        if self._is_using_steering_pid:
-            # TODO: Check steering angel from pose units
-            current_steering = self._pose["steering_angle"]
-            steering_angle = self._steering_pid(current_steering, steering_angle)
+        target_steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
+        current_steering_angle = self.pose["steering_angle"]
+        delta_steering_angle = self._steering_pid(current_steering_angle, target_steering_angle)
+        steering_angle = current_steering_angle + delta_steering_angle
         self.steering_command = steering_angle
         return steering_angle
 
     def _calculate_acceleration(self, target_velocity: float) -> float:
         current_velocity = self.pose["velocity"]
-        if self._is_using_acceleration_pid:
-            throttle = self._throttle_pid(current_velocity, target_velocity)
-            brake = self._brake_pid(current_velocity, target_velocity)
-            logger.debug(f"Using PID computed acceleration, t: {throttle}, b: {brake}")
-            brake *= -1
-        else:
-            max_acceleration = self.controller.a_max
-            delta = (target_velocity - current_velocity) / 4
-            acceleration = np.clip(delta, -1.0, max_acceleration)
-            throttle, brake = self._calculate_commands(acceleration)
-        return throttle, brake
-
-    def _calculate_commands(self, acceleration: float) -> List[float]:
-        acceleration = np.clip(acceleration, -1.0, 1.0)
-        self.acceleration_command = acceleration
-        brake = -1 * acceleration if acceleration < 0 else 0.0
-        throttle = acceleration if acceleration > 0 else 0.0
-        if self.pose["velocity"] < 10.0:
-            throttle = np.clip(throttle, 0.0, 0.60)
+        throttle = self._throttle_pid(current_velocity, target_velocity)
+        brake = self._brake_pid(current_velocity, target_velocity)
         return throttle, brake
 
     @property
@@ -103,7 +85,6 @@ class ElTuarMPC(AssettoCorsaInterface):
             speed_index = centre_index % (len(self.reference_speeds) - 1)
             end_index = speed_index + 100
             reference_speed = np.mean(self.reference_speeds[speed_index:end_index])
-            # logger.info(f"Using reference speed from localisation: {reference_speed}")
         return reference_speed
 
     def behaviour(self, observation: Dict) -> np.array:
@@ -275,7 +256,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         sp = ax.scatter(
             ref_path[0, :],
             ref_path[1, :],
-            c=ref_path[2, :] * 3.6,  # / ref_path[2, :].max(),
+            c=ref_path[2, :] * 3.6,
             cmap=plt.get_cmap("plasma"),
             edgecolor="none",
         )
@@ -283,7 +264,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         plt.gray()
         fig.colorbar(sp)
         fig.tight_layout()
-        plt.savefig("spa_speed.png")
+        plt.savefig(f"{self._experiment_name}_speed.png")
         plt.show()
 
     def teardown(self):
@@ -293,7 +274,6 @@ class ElTuarMPC(AssettoCorsaInterface):
             self.localiser.shutdown()
         self._maybe_record_localisation_data()
         self.visualiser.terminate()
-        # self.visualiser.shutdown()
 
     def _maybe_record_localisation_data(self):
         if self.localiser and self._is_collecting_localisation_data:
@@ -316,8 +296,8 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._is_using_localisation = cfg["use_localisation"]
         self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
         save_path = cfg["benchmark_observations_save_location"]
-        experiment_name = self.cfg["experiment_name"]
-        self._save_localisation_path = f"{save_path}/{experiment_name}/control.npy"
+        self._experiment_name = self.cfg["experiment_name"]
+        self._save_localisation_path = f"{save_path}/{self._experiment_name}/control.npy"
 
     def _setup_state(self):
         self.game_pose = None
@@ -350,11 +330,8 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _setup_controller(self):
         self.controller = Controller(self.cfg, self.perception)
         pid_cfg = self.cfg["acceleration_pid"]
-        self._is_using_acceleration_pid = pid_cfg["use_acceleration_pid"]
         self._throttle_pid = ThrottlePID(pid_cfg["throttle_pid"])
         self._brake_pid = BrakePID(pid_cfg["brake_pid"])
-        pid_cfg = self.cfg["steering_pid"]
-        self._is_using_steering_pid = pid_cfg["use_steering_pid"]
         self._steering_pid = SteeringPID(self.cfg["steering_pid"])
 
     def _setup_mapper(self):
