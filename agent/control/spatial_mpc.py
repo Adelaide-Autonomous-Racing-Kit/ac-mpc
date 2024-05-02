@@ -78,7 +78,7 @@ class SpatialMPC:
         return self.SpeedProfileConstraints["v_max"]
 
     def compute_speed_profile(
-        self, reference_path, end_vel=None, ay_max_overwrite=None, a_min_overwrite=None
+        self, reference_path, end_vel=None, ay_max_overwrite=None, a_min_overwrite=None,
     ):
         """
         Compute a speed profile for the path. Assign a reference velocity
@@ -89,6 +89,7 @@ class SpatialMPC:
 
         # Set optimization horizon
         N = len(reference_path)
+        max_iter = 4000
 
         # Constraints
 
@@ -100,6 +101,7 @@ class SpatialMPC:
         if ay_max_overwrite is None:
             ay_max = self.SpeedProfileConstraints["ay_max"]
         else:
+            max_iter = 40000
             logger.error(
                 f"Overwriting ay max with: {ay_max_overwrite}, remove this later?"
             )
@@ -124,7 +126,6 @@ class SpatialMPC:
             li = current_waypoint["dist_ahead"]
             # curvature of waypoint
             ki = current_waypoint["kappa"]
-
             # Fill operator matrix
             # dynamics of acceleration
             if i < N - 1:
@@ -140,6 +141,7 @@ class SpatialMPC:
 
         if end_vel:
             v_max[-1] = min(end_vel, v_max[-1])
+        
 
         # Construct inequality matrix
         D1 = sparse.csc_matrix(D1)
@@ -156,7 +158,7 @@ class SpatialMPC:
 
         # Solve optimization problem
         problem = osqp.OSQP()
-        problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=False)
+        problem.setup(P=P, q=q, A=D, l=l, u=u, verbose=False, max_iter=max_iter)
         # speed_profile = problem.solve().x
         dec = problem.solve()
         speed_profile = dec.x

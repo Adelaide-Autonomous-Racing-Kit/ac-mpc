@@ -75,25 +75,11 @@ class Controller:
     def compute_track_speed_profile(self, track: np.array) -> np.array:
         mpc = self._controller.model_predictive_controller
         a_min = self._track_a_min
-        not_solved = True
-        while not_solved:
-            try:
-                speed_profile = mpc.compute_speed_profile(
-                    track,
-                    ay_max_overwrite=self._track_ay_max,
-                    a_min_overwrite=a_min,
-                )
-                plot_ref_path = np.array(
-                    [
-                        [val["x"], val["y"], val["v_ref"]]
-                        for i, val in enumerate(speed_profile)
-                    ]
-                ).T
-                not_solved = False
-            except Exception as e:
-                logger.info(f"Failed solve with: {a_min}, moving to {a_min-0.01}")
-                a_min -= 0.01
-
+        speed_profile = mpc.compute_speed_profile(
+            track,
+            ay_max_overwrite=self._track_ay_max,
+            a_min_overwrite=a_min,
+        )
         return speed_profile
 
     @property
