@@ -80,6 +80,22 @@ racing:
     map_speed_profile_constraints:
         ay_max: 7.0
         a_min: -0.15
+acceleration_pid:
+    throttle_pid:
+        proportional: 0.05
+        integral: 0.5
+        derivative: -0.01
+        sampling_interval_s: 0.01
+    brake_pid:
+        proportional: 0.2
+        integral: 0.0
+        derivative: 0.0
+        sampling_interval_s: 0.01
+steering_pid:
+    proportional: 1.0
+    integral: 0.0
+    derivative: 0.0
+    sampling_interval_s: 0.01
 aci:
     race.ini:
         RACE:
