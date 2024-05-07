@@ -161,8 +161,11 @@ class MapFeed(VisualisationThread):
 
     def _setup_map_frame(self, map_path: str):
         self._setup_map_canvas()
-        self._map = load.track_map(map_path)
-        self._draw_map()
+        try:
+            self._map = load.track_map(map_path)
+            self._draw_map()
+        except FileNotFoundError:
+            self._setup_map_canvas()
 
     def _setup_map_canvas(self) -> np.array:
         x_extent = self._map_limits.x_max - self._map_limits.x_min
@@ -210,6 +213,8 @@ class MapFeed(VisualisationThread):
         )
 
     def _draw_estimated_position(self, map_frame: np.array):
+        if self._agent.localiser is None:
+            return
         x, y, yaw = self._agent.localiser.estimated_position
         position = np.array([x, y])
         position = self._transform_points(position)

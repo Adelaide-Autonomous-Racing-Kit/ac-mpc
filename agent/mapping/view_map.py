@@ -22,24 +22,24 @@ def main(args: argparse.Namespace):
         centre = MapMaker.upsample_track(centre)
         outside = np.stack(
             (
-                MapMaker.smooth_boi(outside, 0, window_length=180, polyorder=3),
-                MapMaker.smooth_boi(outside, 1, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(outside, 0, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(outside, 1, window_length=360, polyorder=3),
             ),
             axis=1,
         )
 
         inside = np.stack(
             (
-                MapMaker.smooth_boi(inside, 0, window_length=180, polyorder=3),
-                MapMaker.smooth_boi(inside, 1, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(inside, 0, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(inside, 1, window_length=360, polyorder=3),
             ),
             axis=1,
         )
 
         centre = np.stack(
             (
-                MapMaker.smooth_boi(centre, 0, window_length=180, polyorder=3),
-                MapMaker.smooth_boi(centre, 1, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(centre, 0, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(centre, 1, window_length=360, polyorder=3),
             ),
             axis=1,
         )
@@ -53,25 +53,34 @@ def main(args: argparse.Namespace):
             np.save(args.output_path, output_map, allow_pickle=True)
         title += " smoothed"
 
+    plot_map(centre, inside, outside, title)
+
+
+def plot_map(
+    centre_track: np.array,
+    inside_track: np.array,
+    outside_track: np.array,
+    title: str,
+):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
     ax.scatter(
-        outside[:, 0],
-        outside[:, 1],
+        outside_track[:, 0],
+        outside_track[:, 1],
         cmap=mpl.colormaps["autumn"],
-        c=np.arange(len(outside)) / len(outside),
+        c=np.arange(len(outside_track)) / len(outside_track),
     )
     ax.scatter(
-        inside[:, 0],
-        inside[:, 1],
+        inside_track[:, 0],
+        inside_track[:, 1],
         cmap=mpl.colormaps["winter"],
-        c=np.arange(len(inside)) / len(inside),
+        c=np.arange(len(inside_track)) / len(inside_track),
     )
     ax.scatter(
-        centre[:, 0],
-        centre[:, 1],
-        c=np.arange(len(centre)) / len(centre),
+        centre_track[:, 0],
+        centre_track[:, 1],
+        c=np.arange(len(centre_track)) / len(centre_track),
     )
 
     ax.set_aspect(1)

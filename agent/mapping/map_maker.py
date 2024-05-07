@@ -1,3 +1,5 @@
+from typing import Dict, Tuple
+
 import numpy as np
 from loguru import logger
 from concorde.tsp import TSPSolver
@@ -48,7 +50,8 @@ class MapMaker:
 
     @staticmethod
     def earlier_points_come_before_later(
-        ordered_points: np.array, unordered_points: np.array
+        ordered_points: np.array,
+        unordered_points: np.array,
     ) -> np.array:
         """Checks to see that the ordered list has points that do come later in the original scan"""
         soon_idx = 0
@@ -66,56 +69,56 @@ class MapMaker:
 
         return outside_points_should_go_forward
 
-    def save_map(self, filename):
-        outsides = []
-        for points_at_timestep in self.outside_track:
-            outsides.extend(points_at_timestep[:1, :])
-        logger.info("Processing outside Track Points")
-        outsides = MapMaker.order_points(np.array(outsides))
+    def _flatten_array(self, array: np.array) -> np.array:
+        flat = []
+        for points_at_timestep in array:
+            flat.extend(points_at_timestep[:1, :])
+        return np.array(flat)
 
-        insides = []
-        for points_at_timestep in self.inside_track:
-            insides.extend(points_at_timestep[:1, :])
-        logger.info("Processing inside Track Points")
-        insides = MapMaker.order_points(np.array(insides))
+    def _save_raw_points(self, filename: str, insides: np.array, outsides: np.array):
+        raw_points = {}
+        points_filename = (
+            f"{filename.split('.')[0]}-raw-points.{filename.split('.')[-1]}"
+        )
+        raw_points["outsides"] = np.copy(outsides)
+        raw_points["insides"] = np.copy(insides)
+        np.save(points_filename, raw_points, allow_pickle=True)
+
+    def _calculate_center_track(
+        self, outsides: np.array, insides: np.array
+    ) -> np.array:
 
         distances = cdist(insides, outsides)
-        logger.info("Processing center Track Points")
         centres = MapMaker.order_points(
             (insides + outsides[np.argmin(distances, axis=1)]) / 2
         )
+        return centres
 
-        # outsides, centres, insides = map(lambda arr: arr[:-10], (outsides, centres, insides))
+    def _smooth_track(self, track: np.array) -> np.array:
+        smooth_x = MapMaker.smooth_boi(track, 0)
+        smooth_y = MapMaker.smooth_boi(track, 1)
+        return np.stack((smooth_x, smooth_y), axis=1)
 
-        outsides = np.stack(
-            (MapMaker.smooth_boi(outsides, 0), MapMaker.smooth_boi(outsides, 1)), axis=1
-        )
-        centres = np.stack(
-            (MapMaker.smooth_boi(centres, 0), MapMaker.smooth_boi(centres, 1)), axis=1
-        )
-        insides = np.stack(
-            (MapMaker.smooth_boi(insides, 0), MapMaker.smooth_boi(insides, 1)), axis=1
-        )
+    def _maybe_flip_outsides(self, outsides: np.array) -> np.array:
+        return self._maybe_flip_track(outsides, self.outside_track)
 
-        outsides, centres, insides = map(
-            MapMaker.order_points, (outsides, centres, insides)
-        )
+    def _maybe_flip_insides(self, insides: np.array) -> np.array:
+        return self._maybe_flip_track(insides, self.inside_track)
 
-        # fixing sometimes flipped
-        if not self.earlier_points_come_before_later(outsides, self.outside_track):
-            outsides = np.flip(outsides, axis=0)
+    def _maybe_flip_centres(self, centres: np.array) -> np.array:
+        return self._maybe_flip_track(centres, self.inside_track)
 
-        # use inside track for checking centres
-        if not self.earlier_points_come_before_later(centres, self.inside_track):
-            centres = np.flip(centres, axis=0)
+    def _maybe_flip_track(self, track: np.array, raw_points: np.array) -> np.array:
+        if not self.earlier_points_come_before_later(track, raw_points):
+            track = np.flip(track, axis=0)
+        return track
 
-        if not self.earlier_points_come_before_later(insides, self.inside_track):
-            insides = np.flip(insides, axis=0)
-
-        outsides = self.upsample_track(outsides)
-        insides = self.upsample_track(insides)
-        centres = self.upsample_track(centres)
-
+    def _remove_duplicate_points(
+        self,
+        centres: np.array,
+        insides: np.array,
+        outsides: np.array,
+    ) -> Tuple[np.array]:
         # Remove near duplicate centre points
         d = np.diff(centres, axis=0)
         dists = np.hypot(d[:, 0], d[:, 1])
@@ -124,12 +127,52 @@ class MapMaker:
         outsides = outsides[is_not_duplicated]
         insides = insides[is_not_duplicated]
         centres = centres[is_not_duplicated]
+        return centres, insides, outsides
+
+    def build_map(self, insides: np.array, outsides: np.array) -> Dict:
+        logger.info("Processing outside Track Points")
+        outsides = MapMaker.order_points(outsides)
+        logger.info("Processing inside Track Points")
+        insides = MapMaker.order_points(insides)
+        logger.info("Processing center Track Points")
+        centres = self._calculate_center_track(outsides, insides)
+
+        outsides = self._smooth_track(outsides)
+        centres = self._smooth_track(centres)
+        insides = self._smooth_track(insides)
+
+        outsides, centres, insides = map(
+            MapMaker.order_points, (outsides, centres, insides)
+        )
+
+        self._maybe_flip_outsides(outsides)
+        self._maybe_flip_insides(insides)
+        self._maybe_flip_centres(centres)
+
+        outsides = self.upsample_track(outsides)
+        insides = self.upsample_track(insides)
+        centres = self.upsample_track(centres)
+
+        centres, insides, outsides = self._remove_duplicate_points(
+            centres,
+            insides,
+            outsides,
+        )
 
         output_map = {
             "outside_track": outsides,
             "inside_track": insides,
             "centre_track": centres,
         }
+        return output_map
+
+    def save_map(self, filename):
+        # Slices remove starting and finishing points where vehicle is stationary
+        outsides = self._flatten_array(self.outside_track)[30:-30]
+        insides = self._flatten_array(self.inside_track)[30:-30]
+        self._save_raw_points(filename, insides, outsides)
+        output_map = self.build_map(insides, outsides)
+
         np.save(filename, output_map, allow_pickle=True)
         self.map_built = True
 

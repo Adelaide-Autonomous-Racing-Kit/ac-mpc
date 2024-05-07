@@ -47,17 +47,17 @@ localisation:
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
-        x: 1.0
-        y: 1.0
-        yaw: 2 # degrees
+        x: 1.1
+        y: 1.1
+        yaw: 3.0 # degrees
     control_noise:
-        velocity: 2
-        yaw:  0.16 # degrees
+        velocity: 0.25
+        yaw:  2.0 # degrees
     thresholds:
         offset: 10
         rotation: 90 # deg
         minimum_particles: 20
-        track_limit: 1.0e+6 
+        track_limit: 25.0
     score_distribution:
         mean: 0
         sigma: 10
