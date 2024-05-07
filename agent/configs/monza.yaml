@@ -57,7 +57,7 @@ localisation:
         offset: 10
         rotation: 90 # deg
         minimum_particles: 20
-        track_limit: 25.0
+        track_limit: 20.0
     score_distribution:
         mean: 0
         sigma: 10
@@ -101,6 +101,8 @@ aci:
         RACE:
             TRACK: "monza"
             CONFIG_TRACK: ""
+        SESSION_0:
+            SPAWN_SET: HOTLAP_START
     capture:
         use_rgb_images: False
         use_state_dicts: True
