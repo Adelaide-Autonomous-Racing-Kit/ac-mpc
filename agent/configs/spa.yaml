@@ -14,7 +14,7 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "agent/models/checkpoints/spa-fpn-resnet-18-v1.pt"
+    model_path: "models/segmentation/spa-fpn-resnet-18-v1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
