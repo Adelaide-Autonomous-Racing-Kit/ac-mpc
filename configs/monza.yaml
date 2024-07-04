@@ -103,7 +103,17 @@ aci:
             CONFIG_TRACK: ""
         SESSION_0:
             SPAWN_SET: HOTLAP_START
+    video.ini:
+        VIDEO:
+            WIDTH: 1280
+            HEIGHT: 736
     capture:
-        use_rgb_images: False
-        use_state_dicts: True
-        wait_for_new_frames: False
+        images:
+            image_format: "BGR0"
+            wait_for_new_frames: False
+        state:
+            use_dicts: True
+    termination:
+        check_every_n: 1000
+        max_consecutive_failures: 3
+        

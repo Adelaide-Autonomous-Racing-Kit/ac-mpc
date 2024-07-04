@@ -1,4 +1,4 @@
-experiment_name: 'silverstone_audi'
+experiment_name: 'spa_audi'
 save_path: "data/testing"
 evaluation: False
 multithreading: True
@@ -14,7 +14,7 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "models/segmentation/silverstone-fpn-resnet-18-v1.1.pt"
+    model_path: "models/segmentation/spa-fpn-resnet-18-v1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -26,22 +26,22 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/silverstone_verysmooth_2.npy
+    map_path: track_maps/spa_smooth_6.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
         horizon: 100
         speed_profile_constraints:
             v_min: 5.0
-            v_max: 20.0
+            v_max: 30.0
             a_min: -3.0
             a_max: 6.0
-            ay_max: 2.0
-        step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
+            ay_max: 1.0
+        step_cost: [5.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
-        final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
+        final_cost: [0.0, 0.0, 1.0e-6] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: True
+    collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
     use_localisation: True
     n_particles: 500
@@ -52,12 +52,12 @@ localisation:
         yaw: 3.0 # degrees
     control_noise:
         velocity: 0.25
-        yaw:  2.0 # degrees
+        yaw:  2.0  # degrees
     thresholds:
         offset: 10
         rotation: 45 # deg
         minimum_particles: 20
-        track_limit: 15.0
+        track_limit: 30
     score_distribution:
         mean: 0
         sigma: 10
@@ -67,18 +67,18 @@ localisation:
 racing:
     control:
         horizon: 100
-        unlocalised_max_speed: 32
+        unlocalised_max_speed: 18
         speed_profile_constraints:
             v_min: 5.0
             v_max: 84.0
-            a_min: -0.25
+            a_min: -0.2
             a_max: 1.0
-            ay_max: 5.0
-        step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
-        r_term: [1.0e-6, 10.0] # velocity, steering
-        final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
+            ay_max: 4.0
+        step_cost: [1.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
+        r_term: [1.0e-2, 10.0] # velocity, steering
+        final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
-        ay_max: 6.5
+        ay_max: 5.0
         a_min: -0.15
 acceleration_pid:
     throttle_pid:
@@ -99,9 +99,11 @@ steering_pid:
 aci:
     race.ini:
         RACE:
-            TRACK: "ks_silverstone"
-            CONFIG_TRACK: "gp"
+            TRACK: "spa"
+            CONFIG_TRACK: ""
     capture:
-        use_rgb_images: False
-        use_state_dicts: True
-        wait_for_new_frames: False
+        images:
+            image_format: "BGR0"
+            wait_for_new_frames: False
+        state:
+            use_dicts: True

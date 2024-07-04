@@ -31,6 +31,20 @@ class ElTuarMPC(AssettoCorsaInterface):
         super().__init__(self.cfg["aci"])
         self.setup()
 
+    def termination_condition(self, observation: Dict) -> bool:
+        """
+        Terminates the run if an agent does not make any progress around the track
+        """
+        current_position = observation["state"]["normalised_car_position"]
+        if self._previous_position is None:
+            self._previous_position = current_position
+            return False
+        distance = abs(current_position - self._previous_position)
+        if distance < 0.0005:
+            return True
+        self._previous_position = current_position
+        return False
+
     @property
     def tracks(self) -> Dict:
         return self.perception.visualisation_tracks
@@ -59,7 +73,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         max_steering_angle = self.controller.delta_max
         target_steering_angle = -1.0 * np.clip(yaw / max_steering_angle, -1, 1)
         current_steering_angle = self.pose["steering_angle"]
-        delta_steering_angle = self._steering_pid(current_steering_angle, target_steering_angle)
+        delta_steering_angle = self._steering_pid(
+            current_steering_angle, target_steering_angle
+        )
         steering_angle = current_steering_angle + delta_steering_angle
         self.steering_command = steering_angle
         return steering_angle
@@ -297,7 +313,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._is_collecting_localisation_data = cfg["collect_benchmark_observations"]
         save_path = cfg["benchmark_observations_save_location"]
         self._experiment_name = self.cfg["experiment_name"]
-        self._save_localisation_path = f"{save_path}/{self._experiment_name}/control.npy"
+        self._save_localisation_path = (
+            f"{save_path}/{self._experiment_name}/control.npy"
+        )
 
     def _setup_state(self):
         self.game_pose = None
@@ -310,6 +328,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._is_mapping_setup = False
         self._is_racing_setup = False
         self.last_update_time = time.time()
+        self._previous_position = None
 
     def _setup_threading(self):
         self.executor = ThreadPoolExecutor(max_workers=8)

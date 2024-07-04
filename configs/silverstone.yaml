@@ -1,4 +1,4 @@
-experiment_name: 'vallelunga_audi'
+experiment_name: 'silverstone_audi'
 save_path: "data/testing"
 evaluation: False
 multithreading: True
@@ -14,7 +14,7 @@ data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: "models/segmentation/vallelunga-fpn-resnet-18-v1.1.pt"
+    model_path: "models/segmentation/silverstone-fpn-resnet-18-v1.1.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -26,7 +26,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/vallelunga_verysmooth_2.npy
+    map_path: track_maps/silverstone_verysmooth_2.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -37,11 +37,11 @@ mapping:
             a_min: -3.0
             a_max: 6.0
             ay_max: 2.0
-        step_cost: [1.0e-3, 1.0e-1, 0.0] # e_y, e_psi, t
+        step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: False
+    collect_benchmark_observations: True
     benchmark_observations_save_location: localisation_data
     use_localisation: True
     n_particles: 500
@@ -57,7 +57,7 @@ localisation:
         offset: 10
         rotation: 45 # deg
         minimum_particles: 20
-        track_limit: 30
+        track_limit: 15.0
     score_distribution:
         mean: 0
         sigma: 10
@@ -75,10 +75,10 @@ racing:
             a_max: 1.0
             ay_max: 5.0
         step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
-        r_term: [1.0e-2, 10.0] # velocity, steering
+        r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
     map_speed_profile_constraints:
-        ay_max: 7.0
+        ay_max: 6.5
         a_min: -0.15
 acceleration_pid:
     throttle_pid:
@@ -99,9 +99,11 @@ steering_pid:
 aci:
     race.ini:
         RACE:
-            TRACK: "ks_vallelunga"
-            CONFIG_TRACK: "extended_circuit"
+            TRACK: "ks_silverstone"
+            CONFIG_TRACK: "gp"
     capture:
-        use_rgb_images: False
-        use_state_dicts: True
-        wait_for_new_frames: False
+        images:
+            image_format: "BGR0"
+            wait_for_new_frames: False
+        state:
+            use_dicts: True
