@@ -101,6 +101,13 @@ aci:
         RACE:
             TRACK: "ks_silverstone"
             CONFIG_TRACK: "gp"
+    video.ini:
+        VIDEO:
+            WIDTH: 1280
+            HEIGHT: 736
+    controls.ini:
+        X360:
+            SPEED_SENSITIVITY: 0.2
     capture:
         images:
             image_format: "BGR0"

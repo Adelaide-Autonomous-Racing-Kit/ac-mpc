@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
@@ -80,7 +80,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.steering_command = steering_angle
         return steering_angle
 
-    def _calculate_acceleration(self, target_velocity: float) -> float:
+    def _calculate_acceleration(self, target_velocity: float) -> Tuple[float, float]:
         current_velocity = self.pose["velocity"]
         throttle = self._throttle_pid(current_velocity, target_velocity)
         brake = self._brake_pid(current_velocity, target_velocity)
@@ -151,7 +151,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._load_model()
         self._is_racing_setup = True
 
-    def select_action(self, obs: List) -> np.array:
+    def select_action(self, obs: Dict) -> np.array:
         """
         # Outputs action given the current observation
         returns:

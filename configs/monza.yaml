@@ -67,7 +67,7 @@ localisation:
 racing:
     control:
         horizon: 100
-        unlocalised_max_speed: 32
+        unlocalised_max_speed: 28
         speed_profile_constraints:
             v_min: 5.0
             v_max: 84.0
@@ -107,6 +107,9 @@ aci:
         VIDEO:
             WIDTH: 1280
             HEIGHT: 736
+    controls.ini:
+        X360:
+            SPEED_SENSITIVITY: 0.2
     capture:
         images:
             image_format: "BGR0"

@@ -1,5 +1,3 @@
-import time
-from threading import Thread
 from typing import Dict
 
 import numpy as np
