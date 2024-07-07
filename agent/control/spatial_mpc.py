@@ -77,8 +77,16 @@ class SpatialMPC:
     def v_max(self) -> float:
         return self.SpeedProfileConstraints["v_max"]
 
+    @property
+    def ki_min(self) -> float:
+        return self.SpeedProfileConstraints["ki_min"]
+
     def compute_speed_profile(
-        self, reference_path, end_vel=None, ay_max_overwrite=None, a_min_overwrite=None,
+        self,
+        reference_path,
+        end_vel=None,
+        ay_max_overwrite=None,
+        a_min_overwrite=None,
     ):
         """
         Compute a speed profile for the path. Assign a reference velocity
@@ -126,16 +134,17 @@ class SpatialMPC:
                 D1[i, i : i + 2] = np.array([-1 / (2 * li), 1 / (2 * li)])
 
             # Compute dynamic constraint on velocity
-            v_max_dyn = np.sqrt(ay_max / (np.abs(ki) + self.eps))
-            # if v_max_dyn < v_max[i]:
-            #     v_max[i] = v_max_dyn
+            if abs(ki) < self.ki_min:
+                # Ignore small curvatures caused by noisy homograph
+                v_max_dyn = v_max[i]
+            else:
+                v_max_dyn = np.sqrt(ay_max / (np.abs(ki) + self.eps))
 
-            v_max[i] = min([v_max_dyn, v_max[i]]) + 2e0
-            v_min[i] = min([v_max_dyn, v_min[i]]) - 2e0
+            # + 2.0 creates a feasible regin when v_max == v_min
+            v_max[i] = max([v_min[i], min([v_max_dyn, v_max[i]])]) + 2e0
 
         if end_vel:
             v_max[-1] = min(end_vel, v_max[-1])
-        
 
         # Construct inequality matrix
         D1 = sparse.csc_matrix(D1)
@@ -388,7 +397,7 @@ class SpatialMPC:
         """
         self.reference_path = self.construct_waypoints(reference_path)
         self.reference_path = self.compute_speed_profile(
-            self.reference_path, end_vel=10.0
+            self.reference_path, end_vel=self.SpeedProfileConstraints["end_velocity"]
         )
 
         # Number of state variables

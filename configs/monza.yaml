@@ -37,6 +37,8 @@ mapping:
             a_min: -3.0
             a_max: 6.0
             ay_max: 2.0
+            ki_min: 0.0
+            end_velocity: 10.0
         step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
@@ -69,17 +71,19 @@ racing:
         horizon: 100
         unlocalised_max_speed: 28
         speed_profile_constraints:
-            v_min: 5.0
+            v_min: 12.0
             v_max: 84.0
-            a_min: -0.3
+            a_min: -1.0
             a_max: 1.0
             ay_max: 5.5
-        step_cost: [1.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
+            ki_min: 0.005
+            end_velocity: 14.0
+        step_cost: [2.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
         ay_max: 7.0
-        a_min: -0.15
+        a_min: -0.135
 acceleration_pid:
     throttle_pid:
         proportional: 0.05
@@ -110,6 +114,9 @@ aci:
     controls.ini:
         X360:
             SPEED_SENSITIVITY: 0.2
+    assists.ini:
+        ASSISTS:
+            TYRE_BLANKETS: 1
     capture:
         images:
             image_format: "BGR0"
