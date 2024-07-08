@@ -21,6 +21,10 @@ from dashboard.backend.feeds import (
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
+UI_PATHS = {
+    "dashboard": os.path.join(DIR_PATH, "ui/Main.qml"),
+    "streaming": os.path.join(DIR_PATH, "ui/MainStream.qml"),
+}
 VIDEO_FEEDS = {
     "cameraFeed": VideoThread("/Users/jpb/Desktop/monza-tuna.mp4"),
     "segmentationFeed": VideoThread("/Users/jpb/Desktop/monza-cap.mp4"),
@@ -40,6 +44,10 @@ VISUALISATION_FEEDS = {
 
 
 class TestDashboardProcess(mp.Process):
+    def __init__(self):
+        super().__init__()
+        self._ui_path = UI_PATHS["dashboard"]
+
     def run(self):
         QQuickWindow.setSceneGraphBackend("software")
         app = QApplication(sys.argv)
@@ -47,7 +55,7 @@ class TestDashboardProcess(mp.Process):
         engine = QQmlApplicationEngine()
         engine.quit.connect(app.quit)
         self._setup_visualisation_providers(engine)
-        engine.load(os.path.join(DIR_PATH, "ui/Main.qml"))
+        engine.load(self._ui_path)
 
         exit_status = app.exec()
         sys.exit(exit_status)
@@ -64,6 +72,14 @@ class DashBoardProcess(TestDashboardProcess):
         super().__init__()
         self._agent = agent
         self._cfg = cfg
+        if self._is_streaming:
+            self._ui_path = UI_PATHS["streaming"]
+        else:
+            self._ui_path = UI_PATHS["dashboard"]
+
+    @property
+    def _is_streaming(self) -> bool:
+        return self._cfg["is_streaming"]
 
     def _setup_visualisation_providers(self, engine: QQmlApplicationEngine):
         for feed_name in VISUALISATION_FEEDS:

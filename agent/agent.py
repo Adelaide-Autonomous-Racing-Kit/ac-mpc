@@ -20,6 +20,7 @@ from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor
 from perception.perception import Perceiver
 from perception.observations import ObservationDict
+from state.shared_memory import SharedPose
 from utils import load
 
 torch.backends.cudnn.benchmark = True
@@ -35,14 +36,14 @@ class ElTuarMPC(AssettoCorsaInterface):
         """
         Terminates the run if an agent does not make any progress around the track
         """
-        current_position = observation["state"]["normalised_car_position"]
-        if self._previous_position is None:
-            self._previous_position = current_position
-            return False
-        distance = abs(current_position - self._previous_position)
-        if distance < 0.0005:
-            return True
-        self._previous_position = current_position
+        # current_position = observation["state"]["normalised_car_position"]
+        # if self._previous_position is None:
+        #    self._previous_position = current_position
+        #    return False
+        # distance = abs(current_position - self._previous_position)
+        # if distance < 0.0005:
+        #    return True
+        # self._previous_position = current_position
         return False
 
     @property
@@ -207,14 +208,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.dt = self.current_time - self.previous_time
         self.pose["velocity"] = obs["speed"]
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
-        self.game_pose = (
-            obs["full_pose"]["x"],
-            obs["full_pose"]["y"],
-            obs["full_pose"]["z"],
-            obs["full_pose"]["yaw"],
-            obs["full_pose"]["pitch"],
-            obs["full_pose"]["roll"],
-        )
+        self.game_pose.pose = obs
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         elapsed_time_since_last_update = time.time() - self.last_update_time
@@ -236,7 +230,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             localisation_input = {
                 "time": time.time(),
                 "control_command": self.control_command,
-                "game_pose": [self.game_pose],
+                "game_pose": [self.game_pose.pose],
             }
             self._localisation_obs[self._step_count] = localisation_input
             self._step_count += 1
@@ -281,7 +275,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         fig.colorbar(sp)
         fig.tight_layout()
         plt.savefig(f"{self._experiment_name}_speed.png")
-        plt.show()
+        # plt.show()
 
     def teardown(self):
         self.perception.shutdown()
@@ -318,7 +312,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         )
 
     def _setup_state(self):
-        self.game_pose = None
+        self.game_pose = SharedPose()
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0

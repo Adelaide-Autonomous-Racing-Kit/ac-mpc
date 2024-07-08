@@ -10,6 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
+is_streaming: True
 data_collection:
     collect_images: 0
 perception:

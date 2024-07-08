@@ -17,6 +17,7 @@ from dashboard.visualisation.plots import (
     draw_localisation_map,
     get_blank_canvas,
 )
+from loguru import logger
 
 
 class FeedThread(QThread):
@@ -194,13 +195,11 @@ class MapFeed(VisualisationThread):
         map_frame = np.copy(self._map_frame)
         self._draw_ego_position(map_frame)
         self._draw_estimated_position(map_frame)
-        return cv2.flip(map_frame, 0)
+        return cv2.rotate(cv2.flip(map_frame, 0), cv2.ROTATE_90_CLOCKWISE)
 
     def _draw_ego_position(self, map_frame: np.array):
-        if self._agent.game_pose is None:
-            return
-        # TODO: Implement this
-        pose = self._agent.game_pose
+        pose = self._agent.game_pose.bev_pose
+        logger.debug(pose)
         position = np.array([pose["x"], pose["y"]])
         position = self._transform_points(position)
         draw_arrow(
@@ -216,6 +215,7 @@ class MapFeed(VisualisationThread):
         if self._agent.localiser is None:
             return
         x, y, yaw = self._agent.localiser.estimated_position
+        logger.debug(f"{x}, {y}, {yaw}")
         position = np.array([x, y])
         position = self._transform_points(position)
         draw_arrow(
