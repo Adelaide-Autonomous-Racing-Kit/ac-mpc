@@ -7,6 +7,9 @@ ApplicationWindow {
     height: 1080
     visible: true
     Material.theme: Material.Dark
+    // Start in top right of desktop
+    x: screen.desktopAvailableWidth - width
+    y: 0
 
 
     Loader {

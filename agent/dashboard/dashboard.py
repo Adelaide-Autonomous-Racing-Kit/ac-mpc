@@ -15,6 +15,7 @@ from dashboard.backend.feeds import (
     MapFeed,
     SegmentationFeed,
     SemanticFeed,
+    SessionInformationProvider,
     VisualisationProvider,
     VideoThread,
 )
@@ -54,17 +55,23 @@ class TestDashboardProcess(mp.Process):
 
         engine = QQmlApplicationEngine()
         engine.quit.connect(app.quit)
-        self._setup_visualisation_providers(engine)
+        self._setup_providers(engine)
         engine.load(self._ui_path)
 
         exit_status = app.exec()
         sys.exit(exit_status)
+
+    def _setup_providers(self, engine: QQmlApplicationEngine):
+        self._setup_visualisation_providers(engine)
 
     def _setup_visualisation_providers(self, engine: QQmlApplicationEngine):
         for feed_name in VIDEO_FEEDS:
             feed_provider = VisualisationProvider(VIDEO_FEEDS[feed_name])
             engine.rootContext().setContextProperty(feed_name, feed_provider)
             engine.addImageProvider(feed_name, feed_provider)
+
+
+from loguru import logger
 
 
 class DashBoardProcess(TestDashboardProcess):
@@ -81,9 +88,17 @@ class DashBoardProcess(TestDashboardProcess):
     def _is_streaming(self) -> bool:
         return self._cfg["is_streaming"]
 
+    def _setup_providers(self, engine: QQmlApplicationEngine):
+        self._setup_visualisation_providers(engine)
+        self._setup_session_information_provider(engine)
+
     def _setup_visualisation_providers(self, engine: QQmlApplicationEngine):
         for feed_name in VISUALISATION_FEEDS:
             feed = VISUALISATION_FEEDS[feed_name](self._agent, self._cfg)
             feed_provider = VisualisationProvider(feed)
             engine.rootContext().setContextProperty(feed_name, feed_provider)
             engine.addImageProvider(feed_name, feed_provider)
+
+    def _setup_session_information_provider(self, engine: QQmlApplicationEngine):
+        self._session_info = SessionInformationProvider(self._agent)
+        engine.rootContext().setContextProperty("sessionInfo", self._session_info)

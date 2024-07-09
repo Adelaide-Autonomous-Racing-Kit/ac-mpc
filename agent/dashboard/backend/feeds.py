@@ -1,12 +1,21 @@
 from __future__ import annotations
 import abc
+import math
 import time
 from collections import namedtuple
 from typing import Dict
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import (
+    QObject,
+    Qt,
+    QTimer,
+    QThread,
+    pyqtProperty,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
 
@@ -198,9 +207,9 @@ class MapFeed(VisualisationThread):
         return cv2.rotate(cv2.flip(map_frame, 0), cv2.ROTATE_90_CLOCKWISE)
 
     def _draw_ego_position(self, map_frame: np.array):
-        pose = self._agent.game_pose.bev_pose
-        logger.debug(pose)
-        position = np.array([pose["x"], pose["y"]])
+        pose = self._agent.game_pose.pose_dict
+        # Game uses y up coordinate frame with z forward
+        position = np.array([-1.0 * pose["x"], pose["z"]])
         position = self._transform_points(position)
         draw_arrow(
             map_frame,
@@ -215,7 +224,6 @@ class MapFeed(VisualisationThread):
         if self._agent.localiser is None:
             return
         x, y, yaw = self._agent.localiser.estimated_position
-        logger.debug(f"{x}, {y}, {yaw}")
         position = np.array([x, y])
         position = self._transform_points(position)
         draw_arrow(
@@ -257,3 +265,34 @@ class VisualisationProvider(QQuickImageProvider):
     @pyqtSlot()
     def shutdown(self):
         self._feed.is_running = False
+
+
+class SessionInformationProvider(QObject):
+    informationUpdated = pyqtSignal()
+
+    def __init__(self, agent: ElTuarMPC):
+        super().__init__()
+        self._agent = agent
+        self._laptime = "00:00.000"
+        self._setup_timer()
+
+    def _setup_timer(self):
+        self._timer = QTimer()
+        self._timer.setInterval(50)
+        self._timer.timeout.connect(self._update_info)
+        self._timer.start()
+
+    def _update_info(self):
+        self._laptime = format_laptime(self._agent.session_info.current_laptime)
+        self.informationUpdated.emit()
+
+    @pyqtProperty(str, notify=informationUpdated)
+    def laptime(self) -> str:
+        return self._laptime
+
+
+def format_laptime(laptime_ms: int) -> str:
+    current_laptime = laptime_ms / 1000
+    minutes = math.floor(current_laptime / 60)
+    seconds = current_laptime % 60
+    return f"{minutes:02d}:{seconds:06.3f}"

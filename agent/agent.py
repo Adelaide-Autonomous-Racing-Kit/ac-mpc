@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ from mapping.map_maker import MapMaker
 from monitor.system_monitor import System_Monitor
 from perception.perception import Perceiver
 from perception.observations import ObservationDict
-from state.shared_memory import SharedPose
+from state.shared_memory import SharedPose, SharedSessionDetails
 from utils import load
 
 torch.backends.cudnn.benchmark = True
@@ -209,6 +209,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.pose["velocity"] = obs["speed"]
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
         self.game_pose.pose = obs
+        self.session_info.current_laptime = obs["i_current_time"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         elapsed_time_since_last_update = time.time() - self.last_update_time
@@ -313,6 +314,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _setup_state(self):
         self.game_pose = SharedPose()
+        self.session_info = SharedSessionDetails()
         self.pose = {"velocity": 0.0, "steering_angle": 0.0}
         self.steering_command = 0
         self.acceleration_command = 0

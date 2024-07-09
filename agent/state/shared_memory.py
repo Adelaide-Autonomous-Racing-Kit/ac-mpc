@@ -1,3 +1,4 @@
+import math
 import ctypes
 import multiprocessing as mp
 from typing import Dict
@@ -11,33 +12,24 @@ class SharedPose:
 
     def __setup(self):
         # [x, y, z, roll, pitch, yaw]
-        mp_array = mp.Array(ctypes.c_float, 6)
-        np_array = np.ndarray(
-            [6],
-            dtype=np.float32,
-            buffer=mp_array.get_obj(),
-        )
-        self._shared_state_buffer = (mp_array, np_array)
+        self._shared_pose = SharedArray(ctypes.c_float, 6)
 
     @property
-    def bev_pose(self) -> Dict:
-        bev_pose = {}
-        pose = self._pose
-        bev_pose["x"] = -1 * pose[0]  # x flip
-        bev_pose["y"] = pose[2]  # in game y is up
-        bev_pose["yaw"] = pose[5]
-        return bev_pose
-
-    @property
-    def _pose(self) -> np.array:
-        state_mp_array, state_np_array = self._shared_state_buffer
-        with state_mp_array.get_lock():
-            pose = state_np_array.copy()
-        return pose
+    def pose_dict(self) -> Dict:
+        pose = self._shared_pose.array
+        pose_dict = {
+            "x": pose[0],
+            "y": pose[1],
+            "z": pose[2],
+            "roll": pose[3],
+            "pitch": pose[4],
+            "yaw": pose[5],
+        }
+        return pose_dict
 
     @property
     def pose(self) -> np.array:
-        pose = self._pose
+        pose = self._shared_pose.array
         return (pose[0], pose[1], pose[2], pose[5], pose[4], pose[3])
 
     @pose.setter
@@ -49,6 +41,67 @@ class SharedPose:
         pitch = observation["full_pose"]["pitch"]
         yaw = observation["full_pose"]["yaw"]
         pose = np.array([x, y, z, roll, pitch, yaw])
-        state_mp_array, state_np_array = self._shared_state_buffer
-        with state_mp_array.get_lock():
-            state_np_array[:] = pose
+        self._shared_pose.array = pose
+
+
+class SharedString:
+    def __init__(self, n_char: int):
+        self.__setup(n_char)
+
+    def __setup(self, n_char: int):
+        self._mp_string = mp.Array(ctypes.c_wchar, n_char)
+
+    @property
+    def value(self) -> str:
+        with self._mp_string.get_lock():
+            value = self._mp_string.value
+        return value
+
+    @value.setter
+    def value(self, value: str):
+        with self._mp_string.get_lock():
+            self._mp_string.value = value
+
+
+class SharedArray:
+    def __init__(self, dtype: ctypes, n_values: int):
+        self.__setup(dtype, n_values)
+
+    def __setup(self, dtype: ctypes, n_values: int):
+        mp_array = mp.Array(dtype, n_values)
+        np_array = np.ndarray(
+            [n_values],
+            dtype=dtype,
+            buffer=mp_array.get_obj(),
+        )
+        self._shared_state_buffer = (mp_array, np_array)
+
+    @property
+    def array(self) -> np.array:
+        mp_array, np_array = self._shared_state_buffer
+        with mp_array.get_lock():
+            array = np_array.copy()
+        return array
+
+    @array.setter
+    def array(self, array: np.array):
+        mp_array, np_array = self._shared_state_buffer
+        with mp_array.get_lock():
+            np_array[:] = array
+
+
+class SharedSessionDetails:
+    def __init__(self):
+        self.__setup()
+
+    def __setup(self):
+        self._session_times = SharedArray(ctypes.c_int, 1)
+        self._session_times.array = np.array([0])
+
+    @property
+    def current_laptime(self) -> str:
+        return self._session_times.array[0]
+
+    @current_laptime.setter
+    def current_laptime(self, current_laptime: int):
+        self._session_times.array = np.array([current_laptime])

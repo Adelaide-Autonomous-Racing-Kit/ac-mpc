@@ -23,6 +23,7 @@ GridLayout {
         Layout.fillHeight: false
         Layout.preferredHeight: 392
         Layout.fillWidth: true
+        SessionSummary{}
     }
     Rectangle {
         color: "transparent"
