@@ -15,10 +15,10 @@ from dashboard.backend.feeds import (
     MapFeed,
     SegmentationFeed,
     SemanticFeed,
-    SessionInformationProvider,
     VisualisationProvider,
     VideoThread,
 )
+from dashboard.backend.session_information import SessionInformationProvider
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -69,9 +69,6 @@ class TestDashboardProcess(mp.Process):
             feed_provider = VisualisationProvider(VIDEO_FEEDS[feed_name])
             engine.rootContext().setContextProperty(feed_name, feed_provider)
             engine.addImageProvider(feed_name, feed_provider)
-
-
-from loguru import logger
 
 
 class DashBoardProcess(TestDashboardProcess):

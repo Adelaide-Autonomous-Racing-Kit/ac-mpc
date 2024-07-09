@@ -21,8 +21,12 @@ class ObservationDict(dict):
         pose = self._unpack_pose(obs["state"])
         self["speed"] = pose["velocity"]
         self["full_pose"] = pose
-        self["current_time"] = obs["state"]["current_time"]
         self["i_current_time"] = obs["state"]["i_current_time"]
+        self["i_best_time"] = obs["state"]["i_best_time"]
+        self["i_last_time"] = obs["state"]["i_last_time"]
+        self["current_sector_index"] = obs["state"]["current_sector_index"]
+        self["completed_laps"] = obs["state"]["completed_laps"]
+        self["last_sector_time"] = obs["state"]["last_sector_time"]
 
     def _unpack_pose(self, pose: Dict) -> Dict:
         pose = {

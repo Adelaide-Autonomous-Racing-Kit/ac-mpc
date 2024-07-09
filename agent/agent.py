@@ -36,6 +36,15 @@ class ElTuarMPC(AssettoCorsaInterface):
         """
         Terminates the run if an agent does not make any progress around the track
         """
+        current_distance = observation["state"]["distance_traveled"]
+        if self._previous_distance is None:
+            self._previous_distance = current_distance
+            return False
+        distance = abs(current_distance - self._previous_distance)
+        if distance < 50:
+            return True
+        self._previous_distance = current_distance
+
         # current_position = observation["state"]["normalised_car_position"]
         # if self._previous_position is None:
         #    self._previous_position = current_position
@@ -209,7 +218,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.pose["velocity"] = obs["speed"]
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
         self.game_pose.pose = obs
-        self.session_info.current_laptime = obs["i_current_time"]
+        self.session_info.session_info = obs
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         elapsed_time_since_last_update = time.time() - self.last_update_time
@@ -324,7 +333,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._is_mapping_setup = False
         self._is_racing_setup = False
         self.last_update_time = time.time()
-        self._previous_position = None
+        self._previous_distance = None
 
     def _setup_threading(self):
         self.executor = ThreadPoolExecutor(max_workers=8)

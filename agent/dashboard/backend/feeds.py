@@ -1,21 +1,12 @@
 from __future__ import annotations
 import abc
-import math
 import time
 from collections import namedtuple
 from typing import Dict
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import (
-    QObject,
-    Qt,
-    QTimer,
-    QThread,
-    pyqtProperty,
-    pyqtSignal,
-    pyqtSlot,
-)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
 
@@ -26,7 +17,6 @@ from dashboard.visualisation.plots import (
     draw_localisation_map,
     get_blank_canvas,
 )
-from loguru import logger
 
 
 class FeedThread(QThread):
@@ -152,7 +142,6 @@ MAP_VISUALISATION_LIMITS = {
     "ks_vallelunga": MapVisualisationLimit(-640, 740, -260, 360),
     "ks_silverstone": MapVisualisationLimit(-560, 560, -900, 900),
 }
-
 ARROW_LENGTH = 25
 
 
@@ -265,34 +254,3 @@ class VisualisationProvider(QQuickImageProvider):
     @pyqtSlot()
     def shutdown(self):
         self._feed.is_running = False
-
-
-class SessionInformationProvider(QObject):
-    informationUpdated = pyqtSignal()
-
-    def __init__(self, agent: ElTuarMPC):
-        super().__init__()
-        self._agent = agent
-        self._laptime = "00:00.000"
-        self._setup_timer()
-
-    def _setup_timer(self):
-        self._timer = QTimer()
-        self._timer.setInterval(50)
-        self._timer.timeout.connect(self._update_info)
-        self._timer.start()
-
-    def _update_info(self):
-        self._laptime = format_laptime(self._agent.session_info.current_laptime)
-        self.informationUpdated.emit()
-
-    @pyqtProperty(str, notify=informationUpdated)
-    def laptime(self) -> str:
-        return self._laptime
-
-
-def format_laptime(laptime_ms: int) -> str:
-    current_laptime = laptime_ms / 1000
-    minutes = math.floor(current_laptime / 60)
-    seconds = current_laptime % 60
-    return f"{minutes:02d}:{seconds:06.3f}"

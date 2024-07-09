@@ -95,13 +95,47 @@ class SharedSessionDetails:
         self.__setup()
 
     def __setup(self):
-        self._session_times = SharedArray(ctypes.c_int, 1)
-        self._session_times.array = np.array([0])
+        self._session_info = SharedArray(ctypes.c_int, 6)
+        self._session_info.array = np.zeros((6))
 
     @property
-    def current_laptime(self) -> str:
-        return self._session_times.array[0]
+    def current_laptime(self) -> int:
+        return self._session_info.array[0]
 
-    @current_laptime.setter
-    def current_laptime(self, current_laptime: int):
-        self._session_times.array = np.array([current_laptime])
+    @property
+    def last_laptime(self) -> int:
+        return self._session_info.array[1]
+
+    @property
+    def best_laptime(self) -> int:
+        return self._session_info.array[2]
+
+    @property
+    def last_sector_time(self) -> int:
+        return self._session_info.array[3]
+
+    @property
+    def n_laps_completed(self) -> int:
+        return self._session_info.array[4]
+
+    @property
+    def current_sector(self) -> int:
+        return self._session_info.array[5]
+
+    @property
+    def session_info(self) -> np.array:
+        return self._session_info.array
+
+    @session_info.setter
+    def session_info(self, session_info: dict):
+        session_info = np.array(
+            [
+                session_info["i_current_time"],
+                session_info["i_last_time"],
+                session_info["i_best_time"],
+                session_info["last_sector_time"],
+                session_info["completed_laps"],
+                session_info["current_sector_index"],
+            ]
+        )
+        self._session_info.array = session_info
