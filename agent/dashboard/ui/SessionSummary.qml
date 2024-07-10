@@ -7,9 +7,9 @@ Rectangle {
         color: "transparent"
         anchors{
             top: parent.top
-            topMargin: 5
+            topMargin: 15
             left: parent.left
-            leftMargin: 5
+            leftMargin: 15
             right: parent.right
             rightMargin: 5
             bottom: parent.bottom
@@ -27,121 +27,210 @@ Rectangle {
         }
 
         RowLayout{
-            id: currentLaptime
+            id: currentLap
             width: parent.width
-            anchors.top: lapsCompleted.bottom
+            anchors{
+                top: lapsCompleted.bottom
+                topMargin: 20
+            }
             TextBody{
                 Layout.alignment: Qt.AlignLeft
-                text: qsTr("Current ") + sessionInfo.current_laptime
+                text: "Current Lap"
             }
         }
 
         Rectangle{
-            id: currentSectorTimes
+            id: currentLapTimes
             color: "transparent"
-            anchors.top: currentLaptime.bottom
+            anchors{
+                top: currentLap.bottom
+                topMargin: 5
+                left: parent.left
+                leftMargin: 20
+            }
             width: parent.width
-            height: 70
+            height: 80
+            Item{
+                id: currentLaptime
+                width: parent.width/4
+                anchors.left: parent.left
+                TextBody{
+                    id: lapTimeTitle
+                    text: "Time"
+                }
+                TextBody {
+                    id: currentLaptimeString
+                    anchors.top: lapTimeTitle.bottom
+                    text: sessionInfo.current_laptime
+                    color: sessionInfo.current_lap_colour
+                }
+                TextBody {
+                   anchors.top: currentLaptimeString.bottom
+                   text: sessionInfo.current_lap_delta
+                   color: sessionInfo.current_lap_delta_colour
+                }
+            }
             Item{
                 id: firstSectorTime
-                width: parent.width/3
-                anchors.left: parent.left
+                width: parent.width/4
+                anchors.left: currentLaptime.right
                 TextBody{
                     id: firstSectorTitle
                     text: "Sector 1"
                 }
                 TextBody {
+                    id: firstSectorTimeString
                     anchors.top: firstSectorTitle.bottom
                     text: sessionInfo.current_first_sector_time
                     color: sessionInfo.first_sector_colour
                 }
+                TextBody {
+                   anchors.top: firstSectorTimeString.bottom
+                   text: sessionInfo.current_first_sector_delta
+                   color: sessionInfo.current_first_sector_delta_colour
+                }
             }
             Item{
                 id: secondSectorTime
-                width: parent.width/3
+                width: parent.width/4
                 anchors.left: firstSectorTime.right
                 TextBody{
                     id: secondSectorTitle
                     text: "Sector 2"
                 }
                 TextBody {
+                    id: secondSectorTimeString
                     anchors.top: secondSectorTitle.bottom
                     text: sessionInfo.current_second_sector_time
                     color: sessionInfo.second_sector_colour
                 }
+                TextBody {
+                   anchors.top: secondSectorTimeString.bottom
+                   text: sessionInfo.current_second_sector_delta
+                   color: sessionInfo.current_second_sector_delta_colour
+                }
             }
             Item{
                 id: thirdSectorTime
-                width: parent.width/3
+                width: parent.width/4
                 anchors.left: secondSectorTime.right
                 TextBody{
                     id: thirdSectorTitle
                     text: "Sector 3"
                 }
                 TextBody {
+                    id: thirdSectorTimeString
                     anchors.top: thirdSectorTitle.bottom
                     text: sessionInfo.current_third_sector_time
                     color: sessionInfo.third_sector_colour
+                }
+                TextBody {
+                   anchors.top: thirdSectorTimeString.bottom
+                   text: sessionInfo.current_third_sector_delta
+                   color: sessionInfo.current_third_sector_delta_colour
                 }
             }
 
         }
        
         RowLayout{
-            id: lastLaptime
+            id: lastLap
             width: parent.width
-            anchors.top: currentSectorTimes.bottom
+            anchors.top: currentLapTimes.bottom
             TextBody{
                 Layout.alignment: Qt.AlignLeft
-                text: qsTr("Last ") + sessionInfo.last_laptime
+                text: "Last Lap"
             }
         }
         Rectangle{
-            id: lastSectorTimes
+            id: lastLaptimes
             color: "transparent"
-            anchors.top: lastLaptime.bottom
+            anchors{
+                top: lastLap.bottom
+                topMargin: 5
+                left: parent.left
+                leftMargin: 20
+            }
             width: parent.width
-            height: 70
+            height: 80
+            Item{
+                id: lastLaptime
+                width: parent.width/4
+                anchors.left: parent.left
+                TextBody{
+                    id: lastLapTimeTitle
+                    text: "Time"
+                }
+                TextBody {
+                    id: lastLapTimeString
+                    anchors.top: lastLapTimeTitle.bottom
+                    text: sessionInfo.last_laptime
+                    color: sessionInfo.last_lap_colour
+                }
+                TextBody {
+                   anchors.top: lastLapTimeString.bottom
+                   text: sessionInfo.last_lap_delta
+                   color: sessionInfo.last_lap_delta_colour
+                }
+            }
             Item{
                 id: lastFirstSectorTime
-                width: parent.width/3
-                anchors.left: parent.left
+                width: parent.width/4
+                anchors.left: lastLaptime.right
                 TextBody{
                     id: lastFirstSectorTitle
                     text: "Sector 1"
                 }
                 TextBody {
+                    id: lastFirstSectorTimeString
                     anchors.top: lastFirstSectorTitle.bottom
                     text: sessionInfo.last_first_sector_time
                     color: sessionInfo.last_first_sector_colour
                 }
+                TextBody {
+                   anchors.top: lastFirstSectorTimeString.bottom
+                   text: sessionInfo.last_first_sector_delta
+                   color: sessionInfo.last_first_sector_delta_colour
+                }
             }
             Item{
                 id: lastSecondSectorTime
-                width: parent.width/3
+                width: parent.width/4
                 anchors.left: lastFirstSectorTime.right
                 TextBody{
                     id: lastSecondSectorTitle
                     text: "Sector 2"
                 }
                 TextBody {
+                    id: lastSecondSectorTimeString
                     anchors.top: lastSecondSectorTitle.bottom
                     text: sessionInfo.last_second_sector_time
                     color: sessionInfo.last_second_sector_colour
                 }
+                TextBody {
+                   anchors.top: lastSecondSectorTimeString.bottom
+                   text: sessionInfo.last_second_sector_delta
+                   color: sessionInfo.last_second_sector_delta_colour
+                }
             }
             Item{
                 id: lastThirdSectorTime
-                width: parent.width/3
+                width: parent.width/4
                 anchors.left: lastSecondSectorTime.right
                 TextBody{
                     id: lastThirdSectorTitle
                     text: "Sector 3"
                 }
                 TextBody {
+                    id: lastThirdSectorTimeString
                     anchors.top: lastThirdSectorTitle.bottom
-                    text: sessionInfo.last_third_sector_time
+                   text: sessionInfo.last_third_sector_time
                     color: sessionInfo.last_third_sector_colour
+                }
+                TextBody {
+                   anchors.top: lastThirdSectorTimeString.bottom
+                   text: sessionInfo.last_third_sector_delta
+                   color: sessionInfo.last_third_sector_delta_colour
                 }
             }
 
@@ -150,22 +239,40 @@ Rectangle {
         RowLayout{
             id: bestLaptime
             width: parent.width
-            anchors.top: lastSectorTimes.bottom
+            anchors.top: lastLaptimes.bottom
             TextBody{
                 Layout.alignment: Qt.AlignLeft
-                text: qsTr("Best ") + sessionInfo.best_laptime
+                text: qsTr("Best Lap ") + sessionInfo.best_lap
             }
         }
         Rectangle{
-            id: bestSectorTimes
+            id: bestLapTimes
             color: "transparent"
-            anchors.top: bestLaptime.bottom
+            anchors{
+                top: bestLaptime.bottom
+                topMargin: 5
+                left: parent.left
+                leftMargin: 20
+            }
             width: parent.width
-            height: 70
+            height: 80
+            Item{
+                id: bestLapTime
+                width: parent.width/4
+                anchors.left: parent.left
+                TextBody{
+                    id: bestLapTimeTitle
+                    text: "Time"
+                }
+                TextBody {
+                    anchors.top: bestLapTimeTitle.bottom
+                    text: sessionInfo.best_laptime
+                }
+            }
             Item{
                 id: bestFirstSectorTime
-                width: parent.width/3
-                anchors.left: parent.left
+                width: parent.width/4
+                anchors.left: bestLapTime.right
                 TextBody{
                     id: bestFirstSectorTitle
                     text: "Sector 1"
@@ -177,7 +284,7 @@ Rectangle {
             }
             Item{
                 id: bestSecondSectorTime
-                width: parent.width/3
+                width: parent.width/4
                 anchors.left: bestFirstSectorTime.right
                 TextBody{
                     id: bestSecondSectorTitle
@@ -190,7 +297,7 @@ Rectangle {
             }
             Item{
                 id: bestThirdSectorTime
-                width: parent.width/3
+                width: parent.width/4
                 anchors.left: bestSecondSectorTime.right
                 TextBody{
                     id: bestThirdSectorTitle

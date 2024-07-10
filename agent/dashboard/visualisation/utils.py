@@ -25,7 +25,7 @@ def draw_track_lines_on_bev(bev, scale, list_of_lines, colour=(255, 0, 255)):
     for track_line in list_of_lines:
         track_line = (track_line * scale).astype(np.int32)
         track_line[:, 0] = track_line[:, 0] + bev.shape[0] / 2
-        draw_track_line(bev, track_line, colour, 1)
+        draw_track_line(bev, track_line, colour, 2)
 
 
 def draw_track_line(
