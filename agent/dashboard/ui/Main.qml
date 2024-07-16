@@ -7,8 +7,6 @@ ApplicationWindow {
     height: 450
     visible: true
     Material.theme: Material.Dark
-    x: screen.desktopAvailableWidth - width - 12
-    y: screen.desktopAvailableHeight - height - 48
 
 
     Loader {
