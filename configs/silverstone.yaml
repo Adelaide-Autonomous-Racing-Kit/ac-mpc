@@ -10,6 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
+is_streaming: False
 data_collection:
     collect_images: 0
 perception:
@@ -37,11 +38,13 @@ mapping:
             a_min: -3.0
             a_max: 6.0
             ay_max: 2.0
+            ki_min: 0.0
+            end_velocity: 10.0
         step_cost: [1.0e-1, 1.0e-1, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
-    collect_benchmark_observations: True
+    collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
     use_localisation: True
     n_particles: 500
@@ -74,9 +77,11 @@ racing:
             a_min: -0.25
             a_max: 1.0
             ay_max: 5.0
+            ki_min: 0.0
+            end_velocity: 10.0
         step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 10.0] # velocity, steering
-        final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
+        final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
         ay_max: 6.5
         a_min: -0.15
@@ -108,6 +113,9 @@ aci:
     controls.ini:
         X360:
             SPEED_SENSITIVITY: 0.2
+    assists.ini:
+        ASSISTS:
+            TYRE_BLANKETS: 1
     capture:
         images:
             image_format: "BGR0"

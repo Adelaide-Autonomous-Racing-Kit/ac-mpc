@@ -24,6 +24,9 @@ from state.shared_memory import SharedPose, SharedSessionDetails
 from utils import load
 
 torch.backends.cudnn.benchmark = True
+MINIMUM_PROGRESS_M = 50
+MINIMUM_PROGRESS = 0.0005
+MINIMUM_FUEL_L = 0.01
 
 
 class ElTuarMPC(AssettoCorsaInterface):
@@ -36,24 +39,37 @@ class ElTuarMPC(AssettoCorsaInterface):
         """
         Terminates the run if an agent does not make any progress around the track
         """
-        current_distance = observation["state"]["distance_traveled"]
-        if self._previous_distance is None:
-            self._previous_distance = current_distance
-            return False
-        distance = abs(current_distance - self._previous_distance)
-        if distance < 50:
-            return True
-        self._previous_distance = current_distance
+        is_not_progressing = not self._is_progressing_distance(observation)
+        is_out_of_fuel = self._is_out_of_fuel(observation)
+        if is_not_progressing:
+            logger.warning("Agent is not making progress")
+        if is_out_of_fuel:
+            logger.warning("Agent is out of fuel")
+        return is_not_progressing or is_out_of_fuel
 
-        # current_position = observation["state"]["normalised_car_position"]
-        # if self._previous_position is None:
-        #    self._previous_position = current_position
-        #    return False
-        # distance = abs(current_position - self._previous_position)
-        # if distance < 0.0005:
-        #    return True
-        # self._previous_position = current_position
-        return False
+    def _is_progressing_distance(self, observation: Dict) -> bool:
+        is_progressing = True
+        current_distance = observation["state"]["distance_traveled"]
+        if self._previous_distance is not None:
+            distance = abs(current_distance - self._previous_distance)
+            if distance < MINIMUM_PROGRESS_M:
+                is_progressing = False
+        self._previous_distance = current_distance
+        return is_progressing
+
+    def _is_out_of_fuel(self, observation: Dict) -> bool:
+        remaining_fuel = observation["state"]["fuel"]
+        return remaining_fuel < MINIMUM_FUEL_L
+
+    def _is_progressing(self, observation: Dict) -> bool:
+        is_progressing = True
+        current_position = observation["state"]["normalised_car_position"]
+        if self._previous_position is not None:
+            distance = abs(current_position - self._previous_position)
+            if distance < MINIMUM_PROGRESS:
+                is_progressing = False
+        self._previous_position = current_position
+        return is_progressing
 
     @property
     def tracks(self) -> Dict:
@@ -264,9 +280,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         ).T
         reference_path = self.controller.construct_waypoints(centre_track)
         reference_path = self.controller.compute_track_speed_profile(reference_path)
-        plot_ref_path = np.array(
-            [[val["x"], val["y"], val["v_ref"]] for i, val in enumerate(reference_path)]
-        ).T
+        plot_ref_path = np.hstack([reference_path.xs, reference_path.ys, reference_path.velocities])
         self._plot_speed_profile(plot_ref_path)
         self.reference_speeds = savgol_filter(plot_ref_path[2], 21, 3)
 

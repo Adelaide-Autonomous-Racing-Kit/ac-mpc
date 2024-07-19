@@ -1,7 +1,7 @@
 experiment_name: 'spa_audi'
 save_path: "data/testing"
 evaluation: False
-multithreading: True
+multithreading: False
 test: False
 seed: 0
 vehicle:
@@ -10,7 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
-is_streaming: False
+is_streaming: True
 data_collection:
     collect_images: 0
 perception:
@@ -124,3 +124,6 @@ aci:
             wait_for_new_frames: False
         state:
             use_dicts: True
+    termination:
+        check_every_n: 1000
+        max_consecutive_failures: 3

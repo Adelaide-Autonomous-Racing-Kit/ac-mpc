@@ -3,10 +3,9 @@ import copy
 import multiprocessing as mp
 import signal
 import time
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple
 
 import numpy as np
-from loguru import logger
 from scipy import sparse
 from ace.steering import SteeringGeometry
 
@@ -68,17 +67,16 @@ class Controller:
         mpc = self._controller.model_predictive_controller
         return mpc.SpeedProfileConstraints["a_max"]
 
-    def construct_waypoints(self, path: np.array) -> np.array:
+    def construct_waypoints(self, path: List[Dict]) -> List[Dict]:
         mpc = self._controller.model_predictive_controller
         return mpc.construct_waypoints(path)
 
-    def compute_track_speed_profile(self, track: np.array) -> np.array:
+    def compute_track_speed_profile(self, track: List[Dict]) -> List[Dict]:
         mpc = self._controller.model_predictive_controller
-        a_min = self._track_a_min
-        speed_profile = mpc.compute_speed_profile(
+        speed_profile = mpc.compute_map_speed_profile(
             track,
-            ay_max_overwrite=self._track_ay_max,
-            a_min_overwrite=a_min,
+            ay_max=self._track_ay_max,
+            a_min=self._track_a_min,
         )
         return speed_profile
 
