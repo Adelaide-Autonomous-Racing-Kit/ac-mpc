@@ -3,9 +3,8 @@ import time
 from typing import Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
-import matplotlib.pyplot as plt
-
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 from loguru import logger
 from scipy.signal import savgol_filter
@@ -265,7 +264,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         tracks = load.track_map(self.cfg["mapping"]["map_path"])
         self._calculate_speed_profile(tracks["centre"])
         self.mapper.map_built = True
-        if not self.localiser is None:
+        if self.localiser is not None:
             self.localiser.start()
 
     def _calculate_speed_profile(self, centre_track: np.array):
@@ -280,7 +279,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         ).T
         reference_path = self.controller.construct_waypoints(centre_track)
         reference_path = self.controller.compute_track_speed_profile(reference_path)
-        plot_ref_path = np.hstack([reference_path.xs, reference_path.ys, reference_path.velocities])
+        plot_ref_path = np.hstack(
+            [reference_path.xs, reference_path.ys, reference_path.velocities]
+        )
         self._plot_speed_profile(plot_ref_path)
         self.reference_speeds = savgol_filter(plot_ref_path[2], 21, 3)
 

@@ -92,7 +92,7 @@ class SpatialMPC:
         reference_path: List[Dict],
         ay_max: float,
         a_min: float,
-    ):
+    ) -> ReferencePath:
         """
         Compute a speed profile for the path. Assign a reference velocity
         to each waypoint based on its curvature.
@@ -104,60 +104,31 @@ class SpatialMPC:
         v_min = np.ones(N) * self.SpeedProfileConstraints["v_min"]
         v_max = np.ones(N) * self.SpeedProfileConstraints["v_max"]
         a_min = np.ones(N - 1) * a_min
-        # Inequality Matrix
-        D1 = np.zeros((N - 1, N))
-
+        # Maximum velocities
         is_bellow_minimum_kappa = np.abs(reference_path.kappas) < self.ki_min
         v_max_dyn = np.sqrt(ay_max / (np.abs(reference_path.kappas) + self.eps))
-        logger.info("Breaker")
         v_max_dyn[is_bellow_minimum_kappa] = self.SpeedProfileConstraints["v_max"]
-        logger.info("Breaker 2 ")
-        logger.debug(f"v_max_dyn: {v_max_dyn}")
-        logger.debug(f"v_max: {v_max}")
-        logger.debug(f"v_min {v_min}")
         v_mins = np.min([v_max_dyn, v_max], axis=0)
-        logger.info(f"v_mins {v_mins}")
         v_maxs = np.max([v_min, v_mins], axis=0)
-        logger.info(f"v_maxs {v_maxs}")
-        v_max[:] = v_maxs + 2e0
-
-        logger.info("Breaker 3")
-        
+        v_max = v_maxs + 2e0
+        # Inequality Matrix
+        D1 = np.zeros((N - 1, N))
         lis = reference_path.distances
-        logger.info(f"Breaker 3 {np.array([-1 / (2 * lis), 1 / (2 * lis)])}")
-        D1[:, :] = np.array([-1 / (2 * lis), 1 / (2 * lis)])
+        main_diagonal = np.diag_indices(D1.shape[0])
+        D1[main_diagonal] = -1 / (2 * lis[:-1])
+        off_diagonal = np.array(main_diagonal[1])
+        off_diagonal += 1
+        off_diagonal = (main_diagonal[0], off_diagonal)
+        D1[off_diagonal] = 1 / (2 * lis[:-1])
 
-        # Iterate over horizon
-        """for i in range(N):
-            # Get information about current waypoint
-            current_waypoint = reference_path[i]
-            # distance between waypoints
-            li = current_waypoint["dist_ahead"]
-            # curvature of waypoint
-            ki = current_waypoint["kappa"]
-            # Fill operator matrix
-            # dynamics of acceleration
-            if i < N - 1:
-                D1[i, i : i + 2] = np.array([-1 / (2 * li), 1 / (2 * li)])
-
-            # Compute dynamic constraint on velocity
-            if abs(ki) < self.ki_min:
-                # Ignore small curvatures caused by noisy homograph
-                v_max_dyn = v_max[i]
-            else:
-                v_max_dyn = np.sqrt(ay_max / (np.abs(ki) + self.eps))
-
-            # + 2.0 creates a feasible regin when v_max == v_min
-            v_max[i] = max([v_min[i], min([v_max_dyn, v_max[i]])]) + 2e0
-        """
         # Construct inequality matrix
         D1 = sparse.csc_matrix(D1)
         D2 = sparse.eye(N)
         D = sparse.vstack([D1, D2], format="csc")
 
         # Get upper and lower bound vectors for inequality constraints
-        l = np.hstack([a_min, v_min])
-        u = np.hstack([a_max, v_max])
+        lower_bound = np.hstack([a_min, v_min])
+        upper_bound = np.hstack([a_max, v_max])
 
         # Set cost matrices
         P = sparse.eye(N, format="csc")
@@ -169,73 +140,62 @@ class SpatialMPC:
             P=P,
             q=q,
             A=D,
-            l=l,
-            u=u,
+            l=lower_bound,
+            u=upper_bound,
             verbose=False,
             max_iter=MAX_SOLVER_ITERATIONS_MAP,
         )
-        # speed_profile = problem.solve().x
         dec = problem.solve()
         speed_profile = dec.x
 
         if dec.info.status == "solved":
             # Assign reference velocity to every waypoint
             reference_path.velocities = speed_profile
-            #for i, wp in enumerate(reference_path):
-            #    wp["v_ref"] = speed_profile[i]
             self.speed_profile = speed_profile
             return reference_path
 
         else:
-            message = f"Infeasible problem! reference path:\n"
+            message = "Infeasible problem! reference path:\n"
             failed_reference_path = np.hstack([reference_path.xs, reference_path.ys])
             logger.warning(message + f"{failed_reference_path}")
             return reference_path
 
-    def compute_speed_profile(self, reference_path: List[Dict], end_vel=None):
+    def compute_speed_profile(
+        self, reference_path: List[Dict], end_vel=None
+    ) -> ReferencePath:
         """
         Compute a speed profile for the path. Assign a reference velocity
         to each waypoint based on its curvature.
         :param Constraints: constraints on acceleration and velocity
         curvature of the path
         """
-
+        # TODO: Remove duplication between here and compute_map_speed_profile
         # Set optimization horizon
         N = len(reference_path)
         # Constraints
         a_max = np.ones(N - 1) * self.SpeedProfileConstraints["a_max"]
         v_min = np.ones(N) * self.SpeedProfileConstraints["v_min"]
         v_max = np.ones(N) * self.SpeedProfileConstraints["v_max"]
-        ay_max = self.SpeedProfileConstraints["ay_max"]
         a_min = np.ones(N - 1) * self.SpeedProfileConstraints["a_min"]
+        ay_max = self.SpeedProfileConstraints["ay_max"]
+        # Maximum velocities
+        is_bellow_minimum_kappa = np.abs(reference_path.kappas) < self.ki_min
+        v_max_dyn = np.sqrt(ay_max / (np.abs(reference_path.kappas) + self.eps))
+        v_max_dyn[is_bellow_minimum_kappa] = self.SpeedProfileConstraints["v_max"]
+        v_mins = np.min([v_max_dyn, v_max], axis=0)
+        v_maxs = np.max([v_min, v_mins], axis=0)
+        v_max = v_maxs + 2e0
+        if end_vel is not None:
+            v_max[-1] = end_vel
         # Inequality Matrix
         D1 = np.zeros((N - 1, N))
-
-        # Iterate over horizon
-        for i in range(N):
-            # Get information about current waypoint
-            current_waypoint = reference_path[i]
-            # distance between waypoints
-            li = current_waypoint["dist_ahead"]
-            # curvature of waypoint
-            ki = current_waypoint["kappa"]
-            # Fill operator matrix
-            # dynamics of acceleration
-            if i < N - 1:
-                D1[i, i : i + 2] = np.array([-1 / (2 * li), 1 / (2 * li)])
-
-            # Compute dynamic constraint on velocity
-            if abs(ki) < self.ki_min:
-                # Ignore small curvatures caused by noisy homograph
-                v_max_dyn = v_max[i]
-            else:
-                v_max_dyn = np.sqrt(ay_max / (np.abs(ki) + self.eps))
-
-            # + 2.0 creates a feasible regin when v_max == v_min
-            v_max[i] = max([v_min[i], min([v_max_dyn, v_max[i]])]) + 2e0
-
-        if end_vel:
-            v_max[-1] = min(end_vel, v_max[-1])
+        lis = reference_path.distances
+        main_diagonal = np.diag_indices(D1.shape[0])
+        D1[main_diagonal] = -1 / (2 * lis[:-1])
+        off_diagonal = np.array(main_diagonal[1])
+        off_diagonal += 1
+        off_diagonal = (main_diagonal[0], off_diagonal)
+        D1[off_diagonal] = 1 / (2 * lis[:-1])
 
         # Construct inequality matrix
         D1 = sparse.csc_matrix(D1)
@@ -243,8 +203,8 @@ class SpatialMPC:
         D = sparse.vstack([D1, D2], format="csc")
 
         # Get upper and lower bound vectors for inequality constraints
-        l = np.hstack([a_min, v_min])
-        u = np.hstack([a_max, v_max])
+        lower_bound = np.hstack([a_min, v_min])
+        upper_bound = np.hstack([a_max, v_max])
 
         # Set cost matrices
         P = sparse.eye(N, format="csc")
@@ -256,33 +216,26 @@ class SpatialMPC:
             P=P,
             q=q,
             A=D,
-            l=l,
-            u=u,
+            l=lower_bound,
+            u=upper_bound,
             verbose=False,
             max_iter=MAX_SOLVER_ITERATIONS,
         )
-        # speed_profile = problem.solve().x
         dec = problem.solve()
         speed_profile = dec.x
 
         if dec.info.status == "solved":
-
             # Assign reference velocity to every waypoint
-            for i, wp in enumerate(reference_path):
-                wp["v_ref"] = speed_profile[i]
-
+            reference_path.velocities = speed_profile
             self.speed_profile = speed_profile
             return reference_path
-
         else:
-            message = f"Infeasible problem! reference path:\n"
-            failed_reference_path = np.array(
-                [[val["x"], val["y"]] for i, val in enumerate(reference_path)]
-            )
+            message = "Infeasible problem! reference path:\n"
+            failed_reference_path = np.hstack([reference_path.xs, reference_path.ys])
             logger.warning(message + f"{failed_reference_path}")
             return reference_path
 
-    def construct_waypoints(self, waypoint_coordinates: np.array) -> List[Dict]:
+    def construct_waypoints(self, waypoint_coordinates: np.array) -> ReferencePath:
         """
         Reformulate conventional waypoints (x, y) coordinates into waypoint
         objects containing (x, y, psi, kappa, ub, lb)
@@ -290,7 +243,6 @@ class SpatialMPC:
         global coordinates
         :return: list of waypoint objects for entire reference path
         """
-
         # List containing waypoint objects
         n_points = len(waypoint_coordinates) - 2
         waypoints = ReferencePath(n_points)
@@ -299,26 +251,18 @@ class SpatialMPC:
         current_wps = waypoint_coordinates[1:-1, :-1]
         next_wps = waypoint_coordinates[2:, :-1]
 
-        diffs_ahead = current_wps - next_wps
+        diffs_ahead = next_wps - current_wps
         diffs_behind = current_wps - previous_wps
-
         waypoints.xs = waypoint_coordinates[1:-1, 0]
         waypoints.ys = waypoint_coordinates[1:-1, 1]
         waypoints.widths = waypoint_coordinates[1:-1, 2]
         waypoints.psis = np.arctan2(diffs_ahead[:, 1], diffs_ahead[:, 0])
-        waypoints.distances = np.sqrt(diffs_ahead[:, 0] ** 2 + diffs_ahead[:, 1] ** 2)
+        waypoints.distances = np.linalg.norm(diffs_ahead, axis=1)
 
         angles_behind = np.arctan2(diffs_behind[:, 1], diffs_behind[:, 0])
-        angle_diffs = (
-            np.mod(waypoints.psis - angles_behind + math.pi, 2 * math.pi) - math.pi
-        )
+        angle_diffs = waypoints.psis - angles_behind + math.pi
+        angle_diffs = np.mod(angle_diffs, 2 * math.pi) - math.pi
         waypoints.kappas = angle_diffs / (waypoints.distances + self.eps)
-
-        #    if wp_id == 0:
-        #        kappa = 0
-        #    elif wp_id == 1:
-        #        waypoints[0]["kappa"] = kappa
-        # logger.debug(waypoints.kappas)
         return waypoints
 
     def update_prediction(self, spatial_state_prediction, reference_path):
@@ -345,6 +289,18 @@ class SpatialMPC:
             predicted_locations[n, :] = predicted_temporal_state[:-1]
 
         return predicted_locations
+
+    def _update_prediction(
+        self, spatial_state_prediction: np.array, reference_path: ReferencePath
+    ) -> np.array:
+        """
+        Transform the predicted states to predicted x and y coordinates.
+        Mainly for visualization purposes.
+        :param spatial_state_prediction: list of predicted state variables
+        :return: lists of predicted x and y coordinates
+        """
+        predicted_locations = self.model._s2t(reference_path, spatial_state_prediction)
+        return predicted_locations[:-1]
 
     def _init_problem(self, spatial_state, reference_path):
         """
@@ -379,6 +335,7 @@ class SpatialMPC:
             / self.model.length
         )
 
+        # TODO: Vectorise
         # Iterate over horizon
         for n in range(self.N):
             # Get information about current waypoint
@@ -405,8 +362,6 @@ class SpatialMPC:
 
             # Constrain maximum speed based on predicted car curvature
             vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred[n]) + 1e-12))
-            # if vmax_dyn < umax_dyn[self.nu * n]:
-            #     umax_dyn[self.nu * n] = vmax_dyn
 
             umax_dyn[self.nu * n] = min([vmax_dyn, umax_dyn[self.nu * n], v_ref]) + 1e-1
             umin_dyn[self.nu * n] = min([vmax_dyn, umin_dyn[self.nu * n], v_ref]) - 1e-1

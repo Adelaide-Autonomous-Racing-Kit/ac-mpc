@@ -66,6 +66,29 @@ class SpatialBicycleModel:
 
         return [x, y, psi]
 
+    def _s2t(
+        self,
+        reference_waypoints: ReferencePath,
+        reference_states: np.array,
+    ) -> List:
+        """
+        Convert spatial state to temporal state given a reference waypoint.
+        :param reference_waypoint: waypoint object to use as reference
+        :param reference_state: state vector as np.array to use as reference
+        :return Temporal State equivalent to reference state
+        """
+
+        # Compute temporal state variables
+        xs = reference_waypoints.xs - reference_states[:, 0] * np.sin(
+            reference_waypoints.psis
+        )
+        ys = reference_waypoints.ys + reference_states[:, 0] * np.cos(
+            reference_waypoints.psis
+        )
+        psis = reference_waypoints.psis + reference_states[:, 1]
+
+        return np.array([xs, ys, psis])
+
     def linearize(self, v_ref, kappa_ref, delta_s):
         """
         Linearize the system equations around provided reference values.
@@ -79,12 +102,12 @@ class SpatialBicycleModel:
         ###################
         # Construct Jacobian Matrix
         a_1 = np.array([1, delta_s, 0])
-        a_2 = np.array([-(kappa_ref ** 2) * delta_s, 1, 0])
+        a_2 = np.array([-(kappa_ref**2) * delta_s, 1, 0])
         a_3 = np.array([-kappa_ref / v_ref * delta_s, 0, 1])
 
         b_1 = np.array([0, 0])
         b_2 = np.array([0, delta_s])
-        b_3 = np.array([-1 / (v_ref ** 2) * delta_s, 0])
+        b_3 = np.array([-1 / (v_ref**2) * delta_s, 0])
 
         f = np.array([0.0, 0.0, 1 / v_ref * delta_s])
 

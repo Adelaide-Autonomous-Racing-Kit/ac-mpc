@@ -15,7 +15,7 @@ from control.spatial_mpc import SpatialMPC
 from perception.shared_memory import SharedPoints
 
 
-def build_mpc(control_cfg: Dict, vehicle_data):
+def build_mpc(control_cfg: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:
     Q = sparse.diags(control_cfg["step_cost"])  # e_y, e_psi, t
     R = sparse.diags(control_cfg["r_term"])  # velocity, delta
     QN = sparse.diags(control_cfg["final_cost"])  # e_y, e_psi, t
