@@ -6,6 +6,10 @@ import osqp
 from loguru import logger
 from scipy import sparse
 
+import sys
+
+np.set_printoptions(threshold=sys.maxsize)
+
 from control.paths import ReferencePath
 
 MAX_SOLVER_ITERATIONS_MAP = 40000
@@ -73,11 +77,11 @@ class SpatialMPC:
         self.infeasibility_counter = 0
 
         # Current control signals
-        self.current_control = np.zeros((self.nu * self.N))
+        self.current_control = np.zeros((self.nu * (self.N - 2)))
         self.projected_control = np.zeros((self.nu, self.N))
 
         # Initialize Optimization Problem
-        self.optimizer = osqp.OSQP()
+        self.optimizer = None
 
     @property
     def v_max(self) -> float:
@@ -89,7 +93,7 @@ class SpatialMPC:
 
     def compute_map_speed_profile(
         self,
-        reference_path: List[Dict],
+        reference_path: ReferencePath,
         ay_max: float,
         a_min: float,
     ) -> ReferencePath:
@@ -112,14 +116,9 @@ class SpatialMPC:
         v_maxs = np.max([v_min, v_mins], axis=0)
         v_max = v_maxs + 2e0
         # Inequality Matrix
-        D1 = np.zeros((N - 1, N))
         lis = reference_path.distances
-        main_diagonal = np.diag_indices(D1.shape[0])
-        D1[main_diagonal] = -1 / (2 * lis[:-1])
-        off_diagonal = np.array(main_diagonal[1])
-        off_diagonal += 1
-        off_diagonal = (main_diagonal[0], off_diagonal)
-        D1[off_diagonal] = 1 / (2 * lis[:-1])
+        D1_diagonal = np.array([-1 / (2 * lis[:-1]), 1 / (2 * lis[:-1])])
+        D1 = sparse.diags(D1_diagonal, offsets=[0, 1], shape=[N - 1, N])
 
         # Construct inequality matrix
         D1 = sparse.csc_matrix(D1)
@@ -188,17 +187,11 @@ class SpatialMPC:
         if end_vel is not None:
             v_max[-1] = end_vel
         # Inequality Matrix
-        D1 = np.zeros((N - 1, N))
         lis = reference_path.distances
-        main_diagonal = np.diag_indices(D1.shape[0])
-        D1[main_diagonal] = -1 / (2 * lis[:-1])
-        off_diagonal = np.array(main_diagonal[1])
-        off_diagonal += 1
-        off_diagonal = (main_diagonal[0], off_diagonal)
-        D1[off_diagonal] = 1 / (2 * lis[:-1])
+        D1_diagonal = np.array([-1 / (2 * lis[:-1]), 1 / (2 * lis[:-1])])
+        D1 = sparse.diags(D1_diagonal, offsets=[0, 1], shape=[N - 1, N])
 
         # Construct inequality matrix
-        D1 = sparse.csc_matrix(D1)
         D2 = sparse.eye(N)
         D = sparse.vstack([D1, D2], format="csc")
 
@@ -265,32 +258,7 @@ class SpatialMPC:
         waypoints.kappas = angle_diffs / (waypoints.distances + self.eps)
         return waypoints
 
-    def update_prediction(self, spatial_state_prediction, reference_path):
-        """
-        Transform the predicted states to predicted x and y coordinates.
-        Mainly for visualization purposes.
-        :param spatial_state_prediction: list of predicted state variables
-        :return: lists of predicted x and y coordinates
-        """
-
-        # Containers for x and y coordinates of predicted states
-        predicted_locations = np.zeros((self.N, 2))
-
-        # Iterate over prediction horizon
-        for n in range(self.N):
-            # Get associated waypoint
-            associated_waypoint = reference_path[n]
-            # Transform predicted spatial state to temporal state
-            predicted_temporal_state = self.model.s2t(
-                associated_waypoint, spatial_state_prediction[n, :]
-            )
-
-            # Save predicted coordinates in world coordinate frame
-            predicted_locations[n, :] = predicted_temporal_state[:-1]
-
-        return predicted_locations
-
-    def _update_prediction(
+    def update_prediction(
         self, spatial_state_prediction: np.array, reference_path: ReferencePath
     ) -> np.array:
         """
@@ -299,10 +267,10 @@ class SpatialMPC:
         :param spatial_state_prediction: list of predicted state variables
         :return: lists of predicted x and y coordinates
         """
-        predicted_locations = self.model._s2t(reference_path, spatial_state_prediction)
+        predicted_locations = self.model.s2t(reference_path, spatial_state_prediction)
         return predicted_locations[:-1]
 
-    def _init_problem(self, spatial_state, reference_path):
+    def init_problem(self, spatial_state, reference_path):
         """
         Initialize optimization problem for current time step.
         """
@@ -314,80 +282,61 @@ class SpatialMPC:
         xmin = self.state_constraints["xmin"]
         xmax = self.state_constraints["xmax"]
 
-        # LTV System Matrices
-        A = np.zeros((self.nx * (self.N + 1), self.nx * (self.N + 1)))
-        B = np.zeros((self.nx * (self.N + 1), self.nu * (self.N)))
-        # Reference vector for state and input variables
-        ur = np.zeros(self.nu * self.N)
         xr = np.zeros(self.nx * (self.N + 1))
-        # Offset for equality constraint (due to B * (u - ur))
-        uq = np.zeros(self.N * self.nx)
         # Dynamic state constraints
         xmin_dyn = np.kron(np.ones(self.N + 1), xmin)
         xmax_dyn = np.kron(np.ones(self.N + 1), xmax)
         # Dynamic input constraints
         umax_dyn = np.kron(np.ones(self.N), umax)
         umin_dyn = np.kron(np.ones(self.N), umin)
-        # umax_dyn[:2] = 0
+
+        # Compute LTV matrices
+        v_refs = reference_path.velocities
+        refs = np.array([reference_path.velocities, reference_path.kappas])
+        f, A, B = self.model.linearise(reference_path)
+        # Reference vector for state and input variables
+        ur = np.ravel(refs, order="F")
+        # Offset for equality constraint (due to B * (u - ur))
+        uq = np.ravel(np.einsum("BNi,iB ->BN", B, refs) - f)
+        # Format matrices
+        A = sparse.block_diag(A, format="csc")
+        A = sparse.block_array([[np.zeros((3, A.shape[1]))], [A]], format="csc")
+        A = sparse.block_array([[A, np.zeros((A.shape[0], 3))]], format="csc")
+        B = sparse.block_diag(B, format="csc")
+        B = sparse.block_array([[np.zeros((3, B.shape[1]))], [B]], format="csc")
+
         # Get curvature predictions from previous control signals
         kappa_pred = (
-            np.tan(np.array(self.current_control[3::] + self.current_control[-1:]))
+            np.tan(np.array(self.current_control[1::2] + self.current_control[-1]))
             / self.model.length
         )
-
-        # TODO: Vectorise
-        # Iterate over horizon
-        for n in range(self.N):
-            # Get information about current waypoint
-            current_waypoint = reference_path[n]
-            delta_s = current_waypoint["dist_ahead"]
-            kappa_ref = current_waypoint["kappa"]
-            v_ref = current_waypoint["v_ref"]
-
-            # Compute LTV matrices
-            f, A_lin, B_lin = self.model.linearize(v_ref, kappa_ref, delta_s)
-            A[
-                (n + 1) * self.nx : (n + 2) * self.nx, n * self.nx : (n + 1) * self.nx
-            ] = A_lin
-            B[
-                (n + 1) * self.nx : (n + 2) * self.nx, n * self.nu : (n + 1) * self.nu
-            ] = B_lin
-
-            # Set reference for input signal
-            ur[n * self.nu : (n + 1) * self.nu] = np.array([v_ref, kappa_ref])
-            # Compute equality constraint offset (B*ur)
-            uq[n * self.nx : (n + 1) * self.nx] = (
-                B_lin.dot(np.array([v_ref, kappa_ref])) - f
-            )
-
-            # Constrain maximum speed based on predicted car curvature
-            vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred[n]) + 1e-12))
-
-            umax_dyn[self.nu * n] = min([vmax_dyn, umax_dyn[self.nu * n], v_ref]) + 1e-1
-            umin_dyn[self.nu * n] = min([vmax_dyn, umin_dyn[self.nu * n], v_ref]) - 1e-1
+        vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred) + 1e-12))
+        candidate_dynamic_umaxs = np.array([vmax_dyn, umax_dyn[::2], v_refs])
+        umax_dyn[::2] = np.min(candidate_dynamic_umaxs, axis=0) + 1e-1
+        candidate_dynamic_umins = np.array([vmax_dyn, umin_dyn[::2], v_refs])
+        umin_dyn[::2] = np.min(candidate_dynamic_umins, axis=0) - 1e-1
 
         ub = (
-            np.array([reference_path[i]["width"] / 2 for i in range(self.N)])
+            np.array([reference_path.widths[i] / 2 for i in range(self.N)])
             - self.model.safety_margin
         )
         lb = (
-            np.array([-reference_path[i]["width"] / 2 for i in range(self.N)])
+            np.array([-reference_path.widths[i] / 2 for i in range(self.N)])
             + self.model.safety_margin
         )
+
+        ub = (reference_path.widths / 2) - self.model.safety_margin
+        lb = (-reference_path.widths / 2) + self.model.safety_margin
+
         xmin_dyn[0] = spatial_state[0]
         xmax_dyn[0] = spatial_state[0]
         xmin_dyn[self.nx :: self.nx] = lb
         xmax_dyn[self.nx :: self.nx] = ub
-
         # Set reference for state as center-line of drivable area
         xr[self.nx :: self.nx] = (lb + ub) / 2
-
         # Get equality matrix
-        Ax = sparse.kron(
-            sparse.eye(self.N + 1), -sparse.eye(self.nx)
-        ) + sparse.csc_matrix(A)
-        Bu = sparse.csc_matrix(B)
-        Aeq = sparse.hstack([Ax, Bu])
+        Ax = sparse.kron(sparse.eye(self.N + 1), -sparse.eye(self.nx)) + A
+        Aeq = sparse.hstack([Ax, B])
         # Get inequality matrix
         Aineq = sparse.eye((self.N + 1) * self.nx + self.N * self.nu)
         # Combine constraint matrices
@@ -415,9 +364,9 @@ class SpatialMPC:
         )
         q = np.hstack(
             [
-                -np.tile(np.diag(self.Q.A), self.N) * xr[: -self.nx],
+                -np.tile(np.diag(self.Q.toarray()), self.N) * xr[: -self.nx],
                 -self.QN.dot(xr[-self.nx :]),
-                -np.tile(np.diag(self.R.A), self.N) * ur,
+                -np.tile(np.diag(self.R.toarray()), self.N) * ur,
             ]
         )
 
@@ -425,7 +374,7 @@ class SpatialMPC:
         self.optimizer = osqp.OSQP()
         self.optimizer.setup(P=P, q=q, A=A, l=l, u=u, verbose=False)
 
-    def get_control(self, reference_path, offset=0):
+    def get_control(self, reference_path: np.array, offset: float = 0.0):
         """
         Get control signal given the current position of the car.
         Solves a finite time optimization problem based on the linearized car model.
@@ -441,14 +390,11 @@ class SpatialMPC:
 
         # x, y psi (y axis is forward)
         state = np.array([offset, 0, np.pi / 2])
-
         # Update spatial state
-        spatial_state = self.model.t2s(
-            reference_state=state, reference_waypoint=self.reference_path[0]
-        )
+        spatial_state = self.model.t2s(self.reference_path.get_state(0), state)
 
         # Initialize optimization problem
-        self._init_problem(spatial_state, self.reference_path)
+        self.init_problem(spatial_state, self.reference_path)
 
         # Solve optimization problem
         dec = self.optimizer.solve()
@@ -463,10 +409,10 @@ class SpatialMPC:
             all_delta = control_signals[1::2]
             self.projected_control = np.array([all_velocities, all_delta])
 
-            # self.current_control = control_signals
+            self.current_control = control_signals
 
             # Get predicted spatial states
-            x = np.reshape(dec.x[: (self.N + 1) * nx], (self.N + 1, nx))
+            x = np.reshape(dec.x[: (self.N) * nx], (self.N, nx))
 
             # Update predicted temporal states
             self.current_prediction = self.update_prediction(x, self.reference_path)
@@ -476,15 +422,11 @@ class SpatialMPC:
 
             self.accelerations = np.diff(x[:, 0]) / self.times
             self.steer_rates = np.diff(x[:, 1]) / self.times
-
             # if problem solved, reset infeasibility counter
             self.infeasibility_counter = 0
 
         else:
             n_times_failed = self.infeasibility_counter
             message = f"Infeasible problem! Failed {n_times_failed} time(s)."
-            # failed_reference_path = np.array(
-            #    [[val["x"], val["y"]] for i, val in enumerate(self.reference_path)]
-            # )
-            logger.warning(message)  # + f"{failed_reference_path}")
+            logger.warning(message)
             self.infeasibility_counter += 1

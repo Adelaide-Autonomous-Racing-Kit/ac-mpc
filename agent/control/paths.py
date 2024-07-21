@@ -64,3 +64,9 @@ class ReferencePath:
 
     def __len__(self) -> int:
         return self._n_positions
+
+    def get_state(self, index: int) -> np.array:
+        """
+        [x, y, psi]
+        """
+        return self._reference_path[index, :3]
