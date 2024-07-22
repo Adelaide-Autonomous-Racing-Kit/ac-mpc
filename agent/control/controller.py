@@ -67,14 +67,11 @@ class Controller:
         mpc = self._controller.model_predictive_controller
         return mpc.SpeedProfileConstraints["a_max"]
 
-    def construct_waypoints(self, path: List[Dict]) -> List[Dict]:
+    def compute_track_speed_profile(self, track: List[Dict]) -> ReferencePath:
         mpc = self._controller.model_predictive_controller
-        return mpc.construct_waypoints(path)
-
-    def compute_track_speed_profile(self, track: List[Dict]) -> List[Dict]:
-        mpc = self._controller.model_predictive_controller
+        waypoints = mpc.construct_waypoints(track)
         speed_profile = mpc.compute_map_speed_profile(
-            track,
+            waypoints,
             ay_max=self._track_ay_max,
             a_min=self._track_a_min,
         )
@@ -116,9 +113,9 @@ class ControlProcess(mp.Process):
     def __setup_shared_arrays(self):
         # TODO: If mapping and racing have different horizons this will
         #  cause issues...
-        self._shared_control = SharedPoints(self._control_horizon - 1, 2)
-        self._shared_cumtime = SharedPoints(self._control_horizon, 0)
         n_elements = self._control_horizon - 1
+        self._shared_control = SharedPoints(n_elements, 2)
+        self._shared_cumtime = SharedPoints(n_elements, 0)
         self._shared_predicted_locations = SharedPoints(n_elements, 2)
 
     @property

@@ -77,7 +77,6 @@ class SpatialMPC:
         self.infeasibility_counter = 0
 
         # Current control signals
-        self.current_control = np.zeros((self.nu * (self.N - 2)))
         self.projected_control = np.zeros((self.nu, self.N))
 
         # Initialize Optimization Problem
@@ -160,7 +159,9 @@ class SpatialMPC:
             return reference_path
 
     def compute_speed_profile(
-        self, reference_path: List[Dict], end_vel=None
+        self,
+        reference_path: ReferencePath,
+        end_vel=None,
     ) -> ReferencePath:
         """
         Compute a speed profile for the path. Assign a reference velocity
@@ -236,26 +237,27 @@ class SpatialMPC:
         global coordinates
         :return: list of waypoint objects for entire reference path
         """
-        # List containing waypoint objects
-        n_points = len(waypoint_coordinates) - 2
+        n_points = len(waypoint_coordinates) - 1
         waypoints = ReferencePath(n_points)
-
-        previous_wps = waypoint_coordinates[0:-2, :-1]
-        current_wps = waypoint_coordinates[1:-1, :-1]
-        next_wps = waypoint_coordinates[2:, :-1]
-
+        previous_wps = np.vstack(
+            [waypoint_coordinates[-1, :-1], waypoint_coordinates[:-2, :-1]]
+        )
+        current_wps = waypoint_coordinates[:-1, :-1]
+        next_wps = waypoint_coordinates[1:, :-1]
         diffs_ahead = next_wps - current_wps
         diffs_behind = current_wps - previous_wps
-        waypoints.xs = waypoint_coordinates[1:-1, 0]
-        waypoints.ys = waypoint_coordinates[1:-1, 1]
-        waypoints.widths = waypoint_coordinates[1:-1, 2]
+        waypoints.xs = waypoint_coordinates[:-1, 0]
+        waypoints.ys = waypoint_coordinates[:-1, 1]
+        waypoints.widths = waypoint_coordinates[1:, 2]
         waypoints.psis = np.arctan2(diffs_ahead[:, 1], diffs_ahead[:, 0])
         waypoints.distances = np.linalg.norm(diffs_ahead, axis=1)
-
+        # Kappa calculation
         angles_behind = np.arctan2(diffs_behind[:, 1], diffs_behind[:, 0])
         angle_diffs = waypoints.psis - angles_behind + math.pi
         angle_diffs = np.mod(angle_diffs, 2 * math.pi) - math.pi
-        waypoints.kappas = angle_diffs / (waypoints.distances + self.eps)
+        kappas = angle_diffs / (waypoints.distances + self.eps)
+        kappas[0] = kappas[1]
+        waypoints.kappas = kappas
         return waypoints
 
     def update_prediction(
@@ -268,7 +270,7 @@ class SpatialMPC:
         :return: lists of predicted x and y coordinates
         """
         predicted_locations = self.model.s2t(reference_path, spatial_state_prediction)
-        return predicted_locations[:-1]
+        return predicted_locations[:-1].T
 
     def init_problem(self, spatial_state, reference_path):
         """
@@ -287,8 +289,10 @@ class SpatialMPC:
         xmin_dyn = np.kron(np.ones(self.N + 1), xmin)
         xmax_dyn = np.kron(np.ones(self.N + 1), xmax)
         # Dynamic input constraints
-        umax_dyn = np.kron(np.ones(self.N), umax)
-        umin_dyn = np.kron(np.ones(self.N), umin)
+        umax = np.kron(np.ones(self.N), umax)
+        umin = np.kron(np.ones(self.N), umin)
+        umax[::2] += 0.1
+        umin[::2] -= 0.1
 
         # Compute LTV matrices
         v_refs = reference_path.velocities
@@ -305,26 +309,6 @@ class SpatialMPC:
         B = sparse.block_diag(B, format="csc")
         B = sparse.block_array([[np.zeros((3, B.shape[1]))], [B]], format="csc")
 
-        # Get curvature predictions from previous control signals
-        kappa_pred = (
-            np.tan(np.array(self.current_control[1::2] + self.current_control[-1]))
-            / self.model.length
-        )
-        vmax_dyn = np.sqrt(self.ay_max / (np.abs(kappa_pred) + 1e-12))
-        candidate_dynamic_umaxs = np.array([vmax_dyn, umax_dyn[::2], v_refs])
-        umax_dyn[::2] = np.min(candidate_dynamic_umaxs, axis=0) + 1e-1
-        candidate_dynamic_umins = np.array([vmax_dyn, umin_dyn[::2], v_refs])
-        umin_dyn[::2] = np.min(candidate_dynamic_umins, axis=0) - 1e-1
-
-        ub = (
-            np.array([reference_path.widths[i] / 2 for i in range(self.N)])
-            - self.model.safety_margin
-        )
-        lb = (
-            np.array([-reference_path.widths[i] / 2 for i in range(self.N)])
-            + self.model.safety_margin
-        )
-
         ub = (reference_path.widths / 2) - self.model.safety_margin
         lb = (-reference_path.widths / 2) + self.model.safety_margin
 
@@ -334,17 +318,21 @@ class SpatialMPC:
         xmax_dyn[self.nx :: self.nx] = ub
         # Set reference for state as center-line of drivable area
         xr[self.nx :: self.nx] = (lb + ub) / 2
+
         # Get equality matrix
-        Ax = sparse.kron(sparse.eye(self.N + 1), -sparse.eye(self.nx)) + A
-        Aeq = sparse.hstack([Ax, B])
+        Ax = sparse.kron(
+            sparse.eye(self.N + 1), -sparse.eye(self.nx)
+        ) + sparse.csc_matrix(A)
+        Bu = sparse.csc_matrix(B)
+        Aeq = sparse.hstack([Ax, Bu])
         # Get inequality matrix
         Aineq = sparse.eye((self.N + 1) * self.nx + self.N * self.nu)
         # Combine constraint matrices
         A = sparse.vstack([Aeq, Aineq], format="csc")
 
         # Get upper and lower bound vectors for equality constraints
-        lineq = np.hstack([xmin_dyn, umin_dyn])
-        uineq = np.hstack([xmax_dyn, umax_dyn])
+        lineq = np.hstack([xmin_dyn, umin])
+        uineq = np.hstack([xmax_dyn, umax])
         # Get upper and lower bound vectors for inequality constraints
         x0 = np.array(spatial_state)
         leq = np.hstack([-x0, uq])
@@ -408,8 +396,6 @@ class SpatialMPC:
             all_velocities = control_signals[0::2]
             all_delta = control_signals[1::2]
             self.projected_control = np.array([all_velocities, all_delta])
-
-            self.current_control = control_signals
 
             # Get predicted spatial states
             x = np.reshape(dec.x[: (self.N) * nx], (self.N, nx))

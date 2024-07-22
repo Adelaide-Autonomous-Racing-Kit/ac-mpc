@@ -91,3 +91,30 @@ class SpatialBicycleModel:
         f[:, 2] = 1 / v_ref * delta_s
 
         return f, A, B
+
+    def _linearize(self, v_ref, kappa_ref, delta_s):
+        """
+        Linearize the system equations around provided reference values.
+        :param v_ref: velocity reference around which to linearize
+        :param kappa_ref: kappa of waypoint around which to linearize
+        :param delta_s: distance between current waypoint and next waypoint
+        """
+
+        ###################
+        # System Matrices #
+        ###################
+        # Construct Jacobian Matrix
+        a_1 = np.array([1, delta_s, 0])
+        a_2 = np.array([-(kappa_ref**2) * delta_s, 1, 0])
+        a_3 = np.array([-kappa_ref / v_ref * delta_s, 0, 1])
+
+        b_1 = np.array([0, 0])
+        b_2 = np.array([0, delta_s])
+        b_3 = np.array([-1 / (v_ref**2) * delta_s, 0])
+
+        f = np.array([0.0, 0.0, 1 / v_ref * delta_s])
+
+        A = np.stack((a_1, a_2, a_3), axis=0)
+        B = np.stack((b_1, b_2, b_3), axis=0)
+
+        return f, A, B

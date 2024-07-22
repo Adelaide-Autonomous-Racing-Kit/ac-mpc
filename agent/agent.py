@@ -277,9 +277,8 @@ class ElTuarMPC(AssettoCorsaInterface):
                 (np.ones(len(centre_track)) * road_width),
             ]
         ).T
-        reference_path = self.controller.construct_waypoints(centre_track)
-        reference_path = self.controller.compute_track_speed_profile(reference_path)
-        plot_ref_path = np.hstack(
+        reference_path = self.controller.compute_track_speed_profile(centre_track)
+        plot_ref_path = np.array(
             [reference_path.xs, reference_path.ys, reference_path.velocities]
         )
         self._plot_speed_profile(plot_ref_path)

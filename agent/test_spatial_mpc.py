@@ -34,7 +34,7 @@ def main():
     mpc = build_mpc(config, vehicle_data)
     N = config["horizon"]
 
-    road_width = 1000
+    road_width = 100
     path_type = "hairpin"  # "hairpin", "curve", "chicane"
 
     # Experiment settings
@@ -89,7 +89,7 @@ def main():
 
             # print(controller.current_prediction)
             cum_dist = np.cumsum(mpc.reference_path.distances)
-            print(mpc.current_control)
+            # print(mpc.current_control)
 
             if show_example_by_example:
                 ax[0].clear()
@@ -104,8 +104,8 @@ def main():
             )
 
             ax[0].scatter(
-                mpc.current_prediction[0],
-                mpc.current_prediction[1],
+                mpc.current_prediction.T[0],
+                mpc.current_prediction.T[1],
                 c=colours[i],
                 label="predicted",
             )

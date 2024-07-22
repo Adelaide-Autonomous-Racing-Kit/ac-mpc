@@ -69,4 +69,4 @@ class ReferencePath:
         """
         [x, y, psi]
         """
-        return self._reference_path[index, :3]
+        return self._reference_path[:3, index]
