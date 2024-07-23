@@ -12,6 +12,7 @@ debugging:
     verbose: True
 data_collection:
     collect_images: 0
+is_streaming: False
 perception:
     model_segmentation: True
     model_path: "models/segmentation/vallelunga-fpn-resnet-18-v1.1.pt"
@@ -37,6 +38,8 @@ mapping:
             a_min: -3.0
             a_max: 6.0
             ay_max: 2.0
+            ki_min: 0.0
+            end_velocity: 10.0
         step_cost: [1.0e-3, 1.0e-1, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
@@ -74,6 +77,8 @@ racing:
             a_min: -0.25
             a_max: 1.0
             ay_max: 5.0
+            ki_min: 0.0
+            end_velocity: 10.0
         step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
@@ -108,6 +113,9 @@ aci:
     controls.ini:
         X360:
             SPEED_SENSITIVITY: 0.2
+    assists.ini:
+        ASSISTS:
+            TYRE_BLANKETS: 1
     capture:
         images:
             image_format: "BGR0"

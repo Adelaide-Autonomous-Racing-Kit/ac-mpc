@@ -26,6 +26,8 @@ torch.backends.cudnn.benchmark = True
 MINIMUM_PROGRESS_M = 50
 MINIMUM_PROGRESS = 0.0005
 MINIMUM_FUEL_L = 0.01
+REFERENCE_SPEED_WINDOW_AHEAD = 75
+REFERENCE_SPEED_WINDOW_BEHIND = 25
 
 
 class ElTuarMPC(AssettoCorsaInterface):
@@ -123,9 +125,10 @@ class ElTuarMPC(AssettoCorsaInterface):
         reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
         if self._is_using_localisation and self.localiser.is_localised:
             centre_index = self.localiser.estimated_map_index
-            speed_index = centre_index % (len(self.reference_speeds) - 1)
-            end_index = speed_index + 100
-            reference_speed = np.mean(self.reference_speeds[speed_index:end_index])
+            start = centre_index - REFERENCE_SPEED_WINDOW_BEHIND
+            end = centre_index + REFERENCE_SPEED_WINDOW_AHEAD
+            indices = np.arange(start, end)
+            reference_speed = np.mean(self.reference_speeds.take(indices, mode="wrap"))
         return reference_speed
 
     def behaviour(self, observation: Dict) -> np.array:

@@ -179,14 +179,14 @@ class SpatialMPC:
         a_min = np.ones(N - 1) * self.SpeedProfileConstraints["a_min"]
         ay_max = self.SpeedProfileConstraints["ay_max"]
         # Maximum velocities
-        is_bellow_minimum_kappa = np.abs(reference_path.kappas) < self.ki_min
-        v_max_dyn = np.sqrt(ay_max / (np.abs(reference_path.kappas) + self.eps))
-        v_max_dyn[is_bellow_minimum_kappa] = self.SpeedProfileConstraints["v_max"]
-        v_mins = np.min([v_max_dyn, v_max], axis=0)
-        v_maxs = np.max([v_min, v_mins], axis=0)
-        v_max = v_maxs + 2e0
-        if end_vel is not None:
-            v_max[-1] = end_vel
+        # is_bellow_minimum_kappa = np.abs(reference_path.kappas) < self.ki_min
+        # v_max_dyn = np.sqrt(ay_max / (np.abs(reference_path.kappas) + self.eps))
+        # v_max_dyn[is_bellow_minimum_kappa] = self.SpeedProfileConstraints["v_max"]
+        # v_mins = np.min([v_max_dyn, v_max], axis=0)
+        # v_maxs = np.max([v_min, v_mins], axis=0)
+        # v_max = v_maxs + 2e0
+        # if end_vel is not None:
+        #    v_max[-1] = end_vel
         # Inequality Matrix
         lis = reference_path.distances
         D1_diagonal = np.array([-1 / (2 * lis[:-1]), 1 / (2 * lis[:-1])])

@@ -1,15 +1,16 @@
 from collections import namedtuple
 from typing import Dict
 
-from loguru import logger
 from simple_pid import PID
 
+BRAKE_DEAD_ZONE_MS = 1.0
 ControlLimits = namedtuple("ControlLimits", ["max", "min"])
 CONTROL_LIMITS = {
     "steering": ControlLimits(max=1.0, min=-1.0),
-    "throttle":ControlLimits(max=1.0, min=0.0),
+    "throttle": ControlLimits(max=1.0, min=0.0),
     "brake": ControlLimits(max=0.0, min=-1.0),
 }
+
 
 class ControlPID:
     def __init__(self, cfg: Dict):
@@ -38,17 +39,21 @@ class ControlPID:
         self._pid.sample_time = self._sampling_interval
         self._pid.output_limits = (self._limits.min, self._limits.max)
 
+
 class SteeringPID(ControlPID):
     def _set_control_limits(self):
         self._limits = CONTROL_LIMITS["steering"]
 
+
 class ThrottlePID(ControlPID):
     def _set_control_limits(self):
         self._limits = CONTROL_LIMITS["throttle"]
+
 
 class BrakePID(ControlPID):
     def _set_control_limits(self):
         self._limits = CONTROL_LIMITS["brake"]
 
     def __call__(self, current: float, target: float) -> float:
+        target += BRAKE_DEAD_ZONE_MS
         return -1.0 * super().__call__(current, target)
