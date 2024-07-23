@@ -1,7 +1,7 @@
 experiment_name: 'spa_audi'
 save_path: "data/testing"
 evaluation: False
-multithreading: False
+multithreading: True
 test: False
 seed: 0
 vehicle:
@@ -10,7 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
-is_streaming: True
+is_streaming: False
 data_collection:
     collect_images: 0
 perception:
@@ -83,7 +83,7 @@ racing:
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
-        ay_max: 5.0
+        ay_max: 6.5
         a_min: -0.15
 acceleration_pid:
     throttle_pid:
@@ -92,8 +92,8 @@ acceleration_pid:
         derivative: -0.01
         sampling_interval_s: 0.01
     brake_pid:
-        proportional: 0.2
-        integral: 0.0
+        proportional: 0.26
+        integral: 0.2
         derivative: 0.0
         sampling_interval_s: 0.01
 steering_pid:
