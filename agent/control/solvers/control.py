@@ -94,7 +94,6 @@ class ControlSolver:
             u=self._upper_bounds,
             verbose=False,
             max_iter=self._max_iterations,
-            warm_start=False,
         )
 
     def _update_QP_problem(self):
