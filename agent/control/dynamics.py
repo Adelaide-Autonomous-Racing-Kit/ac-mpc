@@ -1,16 +1,21 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Dict, Tuple
 import math
 
 import numpy as np
 
 
 class SpatialBicycleModel:
-    def __init__(self, n_states, wheel_base, width):
-        self.n_states = n_states
-        self.length = wheel_base
-        self.width = width
-        self.safety_margin = width / 2
+    def __init__(self, vehicle_data: SteeringGeometry, velocity_limits: Dict):
+        self.length = vehicle_data.vehicle_data.wheelbase
+        self.width = vehicle_data.vehicle_data.width
+        self.delta_max = vehicle_data.max_steering_angle()
+        self.margin = self.width / 2
+        self.min_velocity = velocity_limits["min"]
+        self.max_velocity = velocity_limits["max"]
+        min_u = np.array([self.min_velocity, -np.tan(self.delta_max) / self.length])
+        max_u = np.array([self.max_velocity, np.tan(self.delta_max) / self.length])
+        self.min_u, self.max_u = min_u, max_u
 
     def t2s(self, reference_waypoint: np.array, reference_state: np.array) -> np.array:
         """

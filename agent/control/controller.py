@@ -15,37 +15,15 @@ from control.spatial_mpc import SpatialMPC
 from perception.shared_memory import SharedPoints
 
 
-def build_mpc(control_cfg: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:
-    Q = sparse.diags(control_cfg["step_cost"])  # e_y, e_psi, t
-    R = sparse.diags(control_cfg["r_term"])  # velocity, delta
-    QN = sparse.diags(control_cfg["final_cost"])  # e_y, e_psi, t
-    v_min = control_cfg["speed_profile_constraints"]["v_min"]
-    v_max = control_cfg["speed_profile_constraints"]["v_max"]
-    wheel_base = vehicle_data.vehicle_data.wheelbase
-    width = vehicle_data.vehicle_data.width
-    delta_max = vehicle_data.max_steering_angle()
-
-    InputConstraints = {
-        "umin": np.array([v_min, -np.tan(delta_max) / wheel_base]),
-        "umax": np.array([v_max, np.tan(delta_max) / wheel_base]),
+def build_mpc(control_config: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:
+    velocity_limits = {
+        "max": control_config["speed_profile_constraints"]["v_max"],
+        "min": control_config["speed_profile_constraints"]["v_min"],
     }
-    StateConstraints = {
-        "xmin": np.array([-np.inf, -np.inf, 0.01]),
-        "xmax": np.array([np.inf, np.inf, np.inf]),
-    }
-
-    model = SpatialBicycleModel(n_states=3, wheel_base=wheel_base, width=width)
-
+    model = SpatialBicycleModel(vehicle_data, velocity_limits)
     spatial_MPC = SpatialMPC(
+        control_config,
         model,
-        delta_max,
-        control_cfg["horizon"],
-        Q,
-        R,
-        QN,
-        StateConstraints,
-        InputConstraints,
-        copy.copy(control_cfg["speed_profile_constraints"]),
     )
     return spatial_MPC
 
@@ -86,6 +64,14 @@ class Controller:
         self._controller.reference_speed = reference_speed
 
     @property
+    def is_localised(self) -> bool:
+        return self.controller.is_localised
+
+    @is_localised.setter
+    def is_localised(self, is_localised: bool):
+        self._controller.is_localised = is_localised
+
+    @property
     def predicted_locations(self) -> np.array:
         return self._controller.predicted_locations
 
@@ -113,8 +99,8 @@ class ControlProcess(mp.Process):
     def __setup_shared_arrays(self):
         # TODO: If mapping and racing have different horizons this will
         #  cause issues...
+        self._shared_control = SharedPoints(self._control_horizon, 2)
         n_elements = self._control_horizon - 1
-        self._shared_control = SharedPoints(n_elements, 2)
         self._shared_cumtime = SharedPoints(n_elements, 0)
         self._shared_predicted_locations = SharedPoints(n_elements, 2)
 
@@ -160,6 +146,29 @@ class ControlProcess(mp.Process):
     @predicted_locations.setter
     def predicted_locations(self, predicted_locations: np.array):
         self._shared_predicted_locations.points = predicted_locations
+
+    @property
+    def is_localised(self) -> bool:
+        """
+        Checks if the agent is localised
+
+        :return: True if the agent is localised, false if it is not
+        :rtype: bool
+        """
+        with self._is_localised.get_lock():
+            is_localised = self._is_localised.value
+        return is_localised
+
+    @is_localised.setter
+    def is_localised(self, is_localised: bool):
+        """
+        Sets if the agent is localised
+
+        :is_running: True if the agent is localised, false if it is not
+        :type is_running: bool
+        """
+        with self._is_localised.get_lock():
+            self._is_localised.value = is_localised
 
     @property
     def is_running(self) -> bool:
@@ -219,12 +228,14 @@ class ControlProcess(mp.Process):
 
     def _update_control(self):
         self._update_reference_speed()
-        self.model_predictive_controller.get_control(self._reference_path)
+        self.model_predictive_controller.get_control(
+            self._reference_path, self.is_localised
+        )
         self._update_shared_memory()
 
     def _update_reference_speed(self):
         v_max = self.reference_speed
-        self.model_predictive_controller.SpeedProfileConstraints["v_max"] = v_max
+        self.model_predictive_controller.speed_profile_constraints["v_max"] = v_max
 
     @property
     def reference_speed(self) -> float:
@@ -290,5 +301,6 @@ class ControlProcess(mp.Process):
     def __setup_shared_values(self):
         self._is_running = mp.Value("i", True)
         self._is_mapping = mp.Value("i", True)
+        self._is_localised = mp.Value("i", False)
         self._shared_update_timestamp = mp.Value("d", 0.0)
         self._shared_reference_speed = mp.Value("d", 0.0)

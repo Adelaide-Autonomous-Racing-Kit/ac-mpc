@@ -12,7 +12,7 @@ debugging:
     verbose: True
 data_collection:
     collect_images: 0
-is_streaming: False
+is_streaming: True
 perception:
     model_segmentation: True
     model_path: "models/segmentation/vallelunga-fpn-resnet-18-v1.1.pt"
@@ -92,8 +92,8 @@ acceleration_pid:
         derivative: -0.01
         sampling_interval_s: 0.01
     brake_pid:
-        proportional: 0.2
-        integral: 0.0
+        proportional: 0.26
+        integral: 0.2
         derivative: 0.0
         sampling_interval_s: 0.01
 steering_pid:

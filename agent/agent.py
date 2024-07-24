@@ -73,6 +73,10 @@ class ElTuarMPC(AssettoCorsaInterface):
         return is_progressing
 
     @property
+    def is_localised(self) -> bool:
+        return self._is_using_localisation and self.localiser.is_localised
+
+    @property
     def tracks(self) -> Dict:
         return self.perception.visualisation_tracks
 
@@ -123,13 +127,17 @@ class ElTuarMPC(AssettoCorsaInterface):
     @property
     def reference_speed(self) -> float:
         reference_speed = self.cfg["racing"]["control"]["unlocalised_max_speed"]
-        if self._is_using_localisation and self.localiser.is_localised:
-            centre_index = self.localiser.estimated_map_index
-            start = centre_index - REFERENCE_SPEED_WINDOW_BEHIND
-            end = centre_index + REFERENCE_SPEED_WINDOW_AHEAD
-            indices = np.arange(start, end)
-            reference_speed = np.mean(self.reference_speeds.take(indices, mode="wrap"))
+        if self.is_localised:
+            reference_speed = self._reference_speed
         return reference_speed
+
+    @property
+    def _reference_speed(self) -> float:
+        centre_index = self.localiser.estimated_map_index
+        start = centre_index - REFERENCE_SPEED_WINDOW_BEHIND
+        end = centre_index + REFERENCE_SPEED_WINDOW_AHEAD
+        indices = np.arange(start, end)
+        return np.mean(self.reference_speeds.take(indices, mode="wrap"))
 
     def behaviour(self, observation: Dict) -> np.array:
         if self._is_mapping:
@@ -221,6 +229,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.update_time_stamps()
         self.update_previous_control_commands()
         self.controller.reference_speed = self.reference_speed
+        self.controller.is_localised = self.is_localised
 
     def update_time_stamps(self):
         self.previous_time = self.current_time
