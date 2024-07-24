@@ -31,7 +31,7 @@ class SpatialMPC:
         self.nx = 3
         self.nu = 2
         # Precision
-        self.eps = 1e-12
+        self._eps = 1e-12
         # Constraints
         self.speed_profile_constraints = config["speed_profile_constraints"]
         # Maximum lateral acceleration
@@ -148,7 +148,7 @@ class SpatialMPC:
         angles_behind = np.arctan2(diffs_behind[:, 1], diffs_behind[:, 0])
         angle_diffs = waypoints.psis - angles_behind + math.pi
         angle_diffs = np.mod(angle_diffs, 2 * math.pi) - math.pi
-        kappas = angle_diffs / (waypoints.distances + self.eps)
+        kappas = angle_diffs / (waypoints.distances + self._eps) + self._eps
         kappas[0] = kappas[1]
         waypoints.kappas = kappas
         return waypoints
@@ -177,51 +177,39 @@ class SpatialMPC:
         Get control signal given the current position of the car.
         Solves a finite time optimization problem based on the linearized car model.
         """
-        self.reference_path = self.construct_waypoints(reference_path)
-        self.reference_path = self.compute_speed_profile(
-            self.reference_path,
+        reference_path = self.construct_waypoints(reference_path)
+        reference_path = self.compute_speed_profile(
+            reference_path,
             is_localised,
             end_vel=self.speed_profile_constraints["end_velocity"],
         )
-
-        # Number of state variables
-        nx = self.nx
-        nu = self.nu
-
         # x, y psi (y axis is forward)
         state = np.array([offset, 0, np.pi / 2])
         # Update spatial state
-        spatial_state = self.model.t2s(self.reference_path.get_state(0), state)
-
+        spatial_state = self.model.t2s(reference_path.get_state(0), state)
         # Initialize optimization problem
-        dec = self._control_solver.solve(spatial_state, self.reference_path)
+        dec = self._control_solver.solve(spatial_state, reference_path)
 
         if dec.info.status == "solved":
             # Get control signals
-            control_signals = np.array(dec.x[-self.MPC_horizon * nu :])
+            control_signals = np.array(dec.x[-self.MPC_horizon * self.nu :])
             control_signals[1::2] = np.arctan(control_signals[1::2] * self.model.length)
-
             # Update control signals
             all_velocities = control_signals[0::2]
             all_delta = control_signals[1::2]
             self.projected_control = np.array([all_velocities, all_delta])
-
             # Get predicted spatial states
-            x = np.reshape(
-                dec.x[: (self.MPC_horizon - 1) * nx], (self.MPC_horizon - 1, nx)
-            )
-
+            result = dec.x[: (self.MPC_horizon - 1) * self.nx]
+            shape = (self.MPC_horizon - 1, self.nx)
+            x = np.reshape(result, shape)
             # Update predicted temporal states
-            self.current_prediction = self.update_prediction(x, self.reference_path)
-
+            self.current_prediction = self.update_prediction(x, reference_path)
+            self.reference_path = reference_path
             self.cum_time = x[:, 2]
             self.times = np.diff(x[:, 2])
-
             self.accelerations = np.diff(x[:, 0]) / self.times
             self.steer_rates = np.diff(x[:, 1]) / self.times
-            # if problem solved, reset infeasibility counter
             self.infeasibility_counter = 0
-
         else:
             n_times_failed = self.infeasibility_counter
             message = f"Infeasible problem! Failed {n_times_failed} time(s)."

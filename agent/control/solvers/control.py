@@ -5,7 +5,6 @@ from typing import Dict
 import osqp
 import numpy as np
 from scipy import sparse
-from loguru import logger
 
 
 class ControlSolver:
@@ -37,10 +36,8 @@ class ControlSolver:
         A = sparse.block_diag(self._A_block, format="csc")
         A = sparse.block_array([[np.zeros((3, A.shape[1]))], [A]], format="csc")
         A = sparse.block_array([[A, np.zeros((A.shape[0], 3))]], format="csc")
-
         B = sparse.block_diag(self._B_block, format="csc")
         B = sparse.block_array([[np.zeros((3, B.shape[1]))], [B]], format="csc")
-
         A_x = self._A_1 + sparse.csc_matrix(A)
         B_u = sparse.csc_matrix(B)
         A_eq = sparse.hstack([A_x, B_u])
@@ -74,9 +71,9 @@ class ControlSolver:
     def _update_costs(self):
         self._q = np.hstack(
             [
-                self._q_Q * self._xrs[: -self._n_temporal_states],
+                -self._q_Q * self._xrs[: -self._n_temporal_states],
                 -self._QN.dot(self._xrs[-self._n_temporal_states :]),
-                self._q_R * self._urs,
+                -self._q_R * self._urs,
             ]
         )
 
@@ -97,6 +94,7 @@ class ControlSolver:
             u=self._upper_bounds,
             verbose=False,
             max_iter=self._max_iterations,
+            warm_start=False,
         )
 
     def _update_QP_problem(self):
@@ -111,7 +109,6 @@ class ControlSolver:
         self._dynamics_model = model
         self._unpack_config(config)
         self._allocate_static_matrices(config)
-        self._eps = 1e-12
         self._problem = None
 
     def _unpack_config(self, config: Dict):
@@ -148,8 +145,8 @@ class ControlSolver:
         # Construction matrices
         self._A_1 = sparse.kron(sparse.eye(n + 1), -sparse.eye(n_x))
         self._A_ineq = sparse.eye((n + 1) * n_x + n * n_u)
-        self._q_Q = -np.tile(np.diag(self._Q.toarray()), n)
-        self._q_R = -np.tile(np.diag(self._R.toarray()), n)
+        self._q_Q = np.tile(np.diag(self._Q.toarray()), n)
+        self._q_R = np.tile(np.diag(self._R.toarray()), n)
         # Cost matrix P
         self._P = sparse.block_diag(
             [
