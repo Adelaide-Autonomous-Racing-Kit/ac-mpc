@@ -72,19 +72,19 @@ racing:
         horizon: 100
         unlocalised_max_speed: 32.0
         speed_profile_constraints:
-            v_min: 10.0
-            v_max: 32.0
-            a_min: -0.5
+            v_min: 18.0
+            v_max: 84.0
+            a_min: -1.0
             a_max: 1.0
             ay_max: 5.0
-            ki_min: 0.006
+            ki_min: 0.003
             end_velocity: 20.0
-        step_cost: [1.0e-2, 5.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [2.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
-        ay_max: 5.0
-        a_min: -0.15
+        ay_max: 8.0
+        a_min: -0.1
 acceleration_pid:
     throttle_pid:
         proportional: 0.05
