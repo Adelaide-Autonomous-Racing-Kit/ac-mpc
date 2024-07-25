@@ -41,7 +41,7 @@ mapping:
             ki_min: 0.0
             end_velocity: 10.0
         step_cost: [5.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
-        r_term: [1.0e-6, 1.0e+1] # velocity, steering
+        r_term: [1.0e-2, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-6] # e_y, e_psi, t
 localisation:
     collect_benchmark_observations: False
