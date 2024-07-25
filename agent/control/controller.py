@@ -99,8 +99,8 @@ class ControlProcess(mp.Process):
     def __setup_shared_arrays(self):
         # TODO: If mapping and racing have different horizons this will
         #  cause issues...
-        self._shared_control = SharedPoints(self._control_horizon, 2)
         n_elements = self._control_horizon - 1
+        self._shared_control = SharedPoints(n_elements, 2)
         self._shared_cumtime = SharedPoints(n_elements, 0)
         self._shared_predicted_locations = SharedPoints(n_elements, 2)
 

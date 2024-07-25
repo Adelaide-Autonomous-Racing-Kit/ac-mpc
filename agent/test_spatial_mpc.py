@@ -12,6 +12,8 @@ from control.utils import (
     get_straight_track,
 )
 
+from loguru import logger
+
 
 def main():
     config = {

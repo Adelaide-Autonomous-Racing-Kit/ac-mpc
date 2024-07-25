@@ -192,16 +192,16 @@ class SpatialMPC:
 
         if dec.info.status == "solved":
             # Get control signals
-            control_signals = np.array(dec.x[-self.MPC_horizon * self.nu :])
+            control_signals = np.array(dec.x[-(self.MPC_horizon - 1) * self.nu :])
             control_signals[1::2] = np.arctan(control_signals[1::2] * self.model.length)
             # Update control signals
             all_velocities = control_signals[0::2]
             all_delta = control_signals[1::2]
             self.projected_control = np.array([all_velocities, all_delta])
             # Get predicted spatial states
-            result = dec.x[: (self.MPC_horizon - 1) * self.nx]
+            states = dec.x[: (self.MPC_horizon - 1) * self.nx]
             shape = (self.MPC_horizon - 1, self.nx)
-            x = np.reshape(result, shape)
+            x = np.reshape(states, shape)
             # Update predicted temporal states
             self.current_prediction = self.update_prediction(x, reference_path)
             self.reference_path = reference_path

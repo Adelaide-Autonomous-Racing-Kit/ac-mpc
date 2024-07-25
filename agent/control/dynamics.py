@@ -27,7 +27,7 @@ class SpatialBicycleModel:
         """
         ref_x, ref_y, ref_psi = reference_waypoint
         x, y, psi = reference_state
-        # Compute spatial state variables=
+        # Compute spatial state variables
         e_y = np.cos(ref_psi) * (y - ref_y) - np.sin(ref_psi) * (x - ref_x)
         e_psi = psi - ref_psi
         # Ensure e_psi is kept within range (-pi, pi]

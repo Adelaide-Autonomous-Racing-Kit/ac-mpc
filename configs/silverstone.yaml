@@ -10,7 +10,7 @@ debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
-is_streaming: True
+is_streaming: False
 data_collection:
     collect_images: 0
 perception:
@@ -46,7 +46,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -73,13 +73,13 @@ racing:
         unlocalised_max_speed: 32
         speed_profile_constraints:
             v_min: 5.0
-            v_max: 84.0
+            v_max: 25.0
             a_min: -1.0
             a_max: 1.0
-            ay_max: 5.0
-            ki_min: 0.0
-            end_velocity: 10.0
-        step_cost: [1.0e-3, 0.0, 0.0] # e_y, e_psi, t
+            ay_max: 3.0
+            ki_min: 0.08
+            end_velocity: 16.0
+        step_cost: [1.0e-2, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-6, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
