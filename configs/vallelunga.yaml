@@ -12,7 +12,7 @@ debugging:
     verbose: True
 data_collection:
     collect_images: 0
-is_streaming: True
+is_streaming: False
 perception:
     model_segmentation: True
     model_path: "models/segmentation/vallelunga-fpn-resnet-18-v1.1.pt"
@@ -46,7 +46,7 @@ mapping:
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: localisation_data
-    use_localisation: True
+    use_localisation: False
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -72,18 +72,18 @@ racing:
         horizon: 100
         unlocalised_max_speed: 32
         speed_profile_constraints:
-            v_min: 5.0
-            v_max: 84.0
-            a_min: -0.25
+            v_min: 8.0
+            v_max: 27.0
+            a_min: -1.0
             a_max: 1.0
-            ay_max: 5.0
-            ki_min: 0.0
-            end_velocity: 10.0
-        step_cost: [4.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
+            ay_max: 3.5
+            ki_min: 0.003
+            end_velocity: null
+        step_cost: [2.0e-2, 5.0e-3, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
-        final_cost: [1.0, 0.0, 1.0] # e_y, e_psi, t
+        final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
-        ay_max: 7.0
+        ay_max: 2.5
         a_min: -0.15
 acceleration_pid:
     throttle_pid:
