@@ -17,6 +17,7 @@ from dashboard.visualisation.plots import (
     draw_localisation_map,
     get_blank_canvas,
 )
+from dashboard.backend.utils import flip, flip_and_rotate
 
 
 class FeedThread(QThread):
@@ -142,6 +143,12 @@ MAP_VISUALISATION_LIMITS = {
     "ks_vallelunga": MapVisualisationLimit(-640, 740, -260, 360),
     "ks_silverstone": MapVisualisationLimit(-560, 560, -900, 900),
 }
+MAP_TRANSFORMATION = {
+    "monza": flip_and_rotate,
+    "spa": flip_and_rotate,
+    "ks_vallelunga": flip,
+    "ks_silverstone": flip_and_rotate,
+}
 ARROW_LENGTH = 25
 
 
@@ -153,6 +160,7 @@ class MapFeed(VisualisationThread):
     def _setup_map_feed(self, cfg: Dict):
         self._track_name = cfg["aci"]["race.ini"]["RACE"]["TRACK"]
         self._map_limits = MAP_VISUALISATION_LIMITS[self._track_name]
+        self._map_transform = MAP_TRANSFORMATION[self._track_name]
         self._translation = np.array(
             [-self._map_limits.x_min, -self._map_limits.y_min], dtype=np.int32
         )
@@ -193,7 +201,7 @@ class MapFeed(VisualisationThread):
         map_frame = np.copy(self._map_frame)
         self._draw_ego_position(map_frame)
         self._draw_estimated_position(map_frame)
-        return cv2.rotate(cv2.flip(map_frame, 0), cv2.ROTATE_90_CLOCKWISE)
+        return self._map_transform(map_frame)
 
     def _draw_ego_position(self, map_frame: np.array):
         pose = self._agent.game_pose.pose_dict
