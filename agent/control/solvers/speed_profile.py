@@ -128,9 +128,6 @@ class SpeedProfileSolver:
         self._max_accelerations = np.ones(self._n_horizon - 1) * self._max_acceleration
 
 
-from loguru import logger
-
-
 class LocalisedSpeedProfileSolver(SpeedProfileSolver):
     def _update_velocity_bounds(
         self,

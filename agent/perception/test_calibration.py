@@ -218,7 +218,7 @@ class TestCamera(unittest.TestCase):
 
         self.assertTrue(
             np.all(np.isclose(image_points_homo, image_points)),
-            f"Homography projection to the image plane is not the same as using extrinsics",
+            "Homography projection to the image plane is not the same as using extrinsics",
         )
 
         ground_points_homo = camera_info.translate_points_from_image_to_ground_plane(
@@ -227,7 +227,7 @@ class TestCamera(unittest.TestCase):
 
         self.assertTrue(
             np.all(np.isclose(ground_points_homo, world_points_on_the_ground[:, :2])),
-            f"Homography projection to the ground plane is not the same as the inverse",
+            "Homography projection to the ground plane is not the same as the inverse",
         )
 
 
