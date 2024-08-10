@@ -1,18 +1,18 @@
 from __future__ import annotations
+
 import copy
 import multiprocessing as mp
 import signal
 import time
 from typing import Dict, List, Tuple
 
-import numpy as np
-from scipy import sparse
 from ace.steering import SteeringGeometry
-
 from control.commands import TemporalCommandSelector
 from control.dynamics import SpatialBicycleModel
 from control.spatial_mpc import SpatialMPC
+import numpy as np
 from perception.shared_memory import SharedPoints
+from scipy import sparse
 
 
 def build_mpc(control_config: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:

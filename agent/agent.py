@@ -1,25 +1,24 @@
+from concurrent.futures import ThreadPoolExecutor
 import threading
 import time
 from typing import Dict, Tuple
-from concurrent.futures import ThreadPoolExecutor
 
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
-from loguru import logger
-from scipy.signal import savgol_filter
 from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
-
 from control.controller import Controller
+from control.pid import BrakePID, SteeringPID, ThrottlePID
 from dashboard.dashboard import DashBoardProcess
-from control.pid import BrakePID, ThrottlePID, SteeringPID
 from localisation.localiser import Localiser
+from loguru import logger
 from mapping.map_maker import MapMaker
+import matplotlib.pyplot as plt
 from monitor.system_monitor import System_Monitor
-from perception.perception import Perceiver
+import numpy as np
 from perception.observations import ObservationDict
+from perception.perception import Perceiver
+from scipy.signal import savgol_filter
 from state.shared_memory import SharedPose, SharedSessionDetails
+import torch
 from utils import load
 
 torch.backends.cudnn.benchmark = True

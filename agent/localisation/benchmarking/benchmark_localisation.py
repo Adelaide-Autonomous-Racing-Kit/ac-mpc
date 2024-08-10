@@ -1,13 +1,12 @@
 import time
 from typing import Dict, List
 
-import numpy as np
-from tqdm import tqdm
-
+from localisation.benchmarking.test_localiser import TestLocaliser
 from localisation.benchmarking.tracker import LocalisationTracker
 from localisation.benchmarking.utils import LocalisationRecording
 from localisation.benchmarking.visualisation import LocalisationVisualiser
-from localisation.benchmarking.test_localiser import TestLocaliser
+import numpy as np
+from tqdm import tqdm
 
 
 class BenchmarkLocalisation:

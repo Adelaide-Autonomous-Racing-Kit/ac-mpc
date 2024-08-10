@@ -1,13 +1,13 @@
 from __future__ import annotations
+
+import multiprocessing as mp
 import os
 import sys
-import multiprocessing as mp
 from typing import Dict
 
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtQuick import QQuickWindow
 from PyQt6.QtWidgets import QApplication
-
 from dashboard.backend.feeds import (
     CameraFeed,
     ControlFeed,
@@ -15,8 +15,8 @@ from dashboard.backend.feeds import (
     MapFeed,
     SegmentationFeed,
     SemanticFeed,
-    VisualisationProvider,
     VideoThread,
+    VisualisationProvider,
 )
 from dashboard.backend.session_information import SessionInformationProvider
 

@@ -1,11 +1,10 @@
 import argparse
 from pathlib import Path
 
+from map_maker import MapMaker
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-
-from map_maker import MapMaker
 
 
 def main(args: argparse.Namespace):

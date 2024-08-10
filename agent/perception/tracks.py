@@ -2,13 +2,12 @@ from collections import namedtuple
 from typing import Dict, List, Tuple
 
 import cv2
-import numpy as np
-from scipy.signal import savgol_filter
 from loguru import logger
-
-from perception.utils import CameraInfo, smooth_track_with_polyfit
-from utils.track_limit_interpolation import maybe_interpolate_track_limit
 from monitor.system_monitor import track_runtime
+import numpy as np
+from perception.utils import CameraInfo, smooth_track_with_polyfit
+from scipy.signal import savgol_filter
+from utils.track_limit_interpolation import maybe_interpolate_track_limit
 
 # TODO: Move into config or calculate
 Limits = namedtuple("Limits", ["x_max", "x_min", "y_max", "y_min"])

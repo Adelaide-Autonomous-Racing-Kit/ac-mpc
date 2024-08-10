@@ -1,8 +1,8 @@
 import json as _json
 from typing import Dict
 
-import numpy as np
 from loguru import logger
+import numpy as np
 from ruamel.yaml import YAML
 
 

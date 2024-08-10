@@ -1,8 +1,8 @@
 from typing import Dict, Tuple
 
-import numpy as np
-from loguru import logger
 from concorde.tsp import TSPSolver
+from loguru import logger
+import numpy as np
 from scipy.signal import savgol_filter
 from scipy.spatial.distance import cdist
 

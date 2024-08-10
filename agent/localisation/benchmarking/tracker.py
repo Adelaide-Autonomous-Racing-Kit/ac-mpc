@@ -1,10 +1,9 @@
 from threading import local
 from typing import Dict
 
-import numpy as np
-from loguru import logger
-
 from localisation.benchmarking.test_localiser import TestLocaliser
+from loguru import logger
+import numpy as np
 
 
 class LocalisationTracker:

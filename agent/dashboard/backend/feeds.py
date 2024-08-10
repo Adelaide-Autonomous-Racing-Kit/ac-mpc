@@ -1,23 +1,23 @@
 from __future__ import annotations
+
 import abc
-import time
 from collections import namedtuple
+import time
 from typing import Dict
 
-import cv2
-import numpy as np
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
-
-from utils import load
-from dashboard.visualisation.utils import COLOUR_LIST, draw_track_line, draw_arrow
+import cv2
+from dashboard.backend.utils import flip, flip_and_rotate
 from dashboard.visualisation.plots import (
     draw_control_map,
     draw_localisation_map,
     get_blank_canvas,
 )
-from dashboard.backend.utils import flip, flip_and_rotate
+from dashboard.visualisation.utils import COLOUR_LIST, draw_arrow, draw_track_line
+import numpy as np
+from utils import load
 
 
 class FeedThread(QThread):

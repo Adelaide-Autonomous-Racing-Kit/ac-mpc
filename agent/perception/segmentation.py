@@ -1,10 +1,10 @@
 import os
 from typing import Dict
 
-import numpy as np
-import torch
 from loguru import logger
+import numpy as np
 import segmentation_models_pytorch as smp
+import torch
 
 
 class TrackSegmenter:

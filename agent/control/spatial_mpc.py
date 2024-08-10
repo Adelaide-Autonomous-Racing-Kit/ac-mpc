@@ -1,17 +1,17 @@
 from __future__ import annotations
+
 import copy
 import math
 from typing import Dict
 
-import numpy as np
-from loguru import logger
-
 from control.paths import ReferencePath
 from control.solvers import (
     ControlSolver,
-    SpeedProfileSolver,
     LocalisedSpeedProfileSolver,
+    SpeedProfileSolver,
 )
+from loguru import logger
+import numpy as np
 
 MAX_SOLVER_ITERATIONS_MAP = 40000
 MAX_SOLVER_ITERATIONS = 4000

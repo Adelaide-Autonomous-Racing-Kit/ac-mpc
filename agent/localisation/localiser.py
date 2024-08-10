@@ -1,17 +1,17 @@
 from __future__ import annotations
+
 import multiprocessing as mp
 import signal
 import time
 from typing import Dict, List, Tuple
 
-import numpy as np
-from loguru import logger
-from utils.kdtree import KDTree
 from ace.steering import SteeringGeometry
-
+from loguru import logger
+import numpy as np
 from perception.shared_memory import SharedPoints
-from utils.fast_distributions import FastNormalDistribution
 from utils import load
+from utils.fast_distributions import FastNormalDistribution
+from utils.kdtree import KDTree
 
 
 class Localiser:

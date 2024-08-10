@@ -2,8 +2,6 @@ import copy
 import unittest
 
 import numpy as np
-
-
 from utils import CameraInfo
 
 

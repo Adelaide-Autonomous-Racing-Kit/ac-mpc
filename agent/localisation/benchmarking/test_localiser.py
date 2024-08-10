@@ -1,8 +1,7 @@
 from typing import Dict
 
+from localisation.localiser import LocalisationProcess, Localiser
 import numpy as np
-
-from localisation.localiser import Localiser, LocalisationProcess
 from utils.fast_distributions import FastNormalDistribution
 
 

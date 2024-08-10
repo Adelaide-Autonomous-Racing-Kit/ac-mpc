@@ -3,8 +3,8 @@ import os
 from typing import Dict
 
 import cv2
-import numpy as np
 from loguru import logger
+import numpy as np
 
 
 class DataRecorder:
@@ -34,7 +34,9 @@ class DataRecorder:
             if not os.path.exists(path):
                 os.makedirs(path)
 
-    def maybe_record_data(self, obs: Dict, dt: float, steering_angle: float, acceleration: float):
+    def maybe_record_data(
+        self, obs: Dict, dt: float, steering_angle: float, acceleration: float
+    ):
         if not self.enable_collect_images:
             return
 

@@ -16,7 +16,7 @@ def get_hairpin_track(radius, number_of_points, angle=0):
 
 def get_curved_track(coeff, number_of_points, angle=0):
     x = np.linspace(0, 100, number_of_points)
-    y = coeff * x ** 2
+    y = coeff * x**2
     return rotate_track_points(x, y, angle)
 
 

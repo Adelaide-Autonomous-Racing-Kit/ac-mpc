@@ -1,7 +1,7 @@
-import time
-from agent import ElTuarMPC
-
 import argparse
+import time
+
+from agent import ElTuarMPC
 
 
 def main():

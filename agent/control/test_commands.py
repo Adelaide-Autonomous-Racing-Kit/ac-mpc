@@ -1,9 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
-import numpy as np
-
 from commands import TemporalCommandInterpolator
+import numpy as np
 
 
 class TestTemporalCommandInterpolator(unittest.TestCase):

@@ -1,20 +1,18 @@
-import multiprocessing as mp
 import io
+import multiprocessing as mp
 import signal
 import time
 from typing import Dict
 
-import cv2
-import numpy as np
-from loguru import logger
 from PIL import Image
-from turbojpeg import TJPF_BGRX, TurboJPEG
-
-
+import cv2
+from loguru import logger
+import numpy as np
 from perception.observations import ObservationDict
-from perception.tracks import TrackLimitPerception
 from perception.segmentation import TrackSegmenter
 from perception.shared_memory import SharedImage, SharedPoints
+from perception.tracks import TrackLimitPerception
+from turbojpeg import TJPF_BGRX, TurboJPEG
 
 TURBO_JPEG = TurboJPEG()
 

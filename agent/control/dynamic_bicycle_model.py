@@ -55,8 +55,12 @@ class DynamicBicycleModel:
                 [11.11, -1.0, -17168],
             ]
         ).T
-        self.acceleration_params, _ = curve_fit(self.long_force, self.acceleration_data[:2], self.acceleration_data[2])
-        self.braking_params, _ = curve_fit(self.long_force, self.braking_data[:2], self.braking_data[2])
+        self.acceleration_params, _ = curve_fit(
+            self.long_force, self.acceleration_data[:2], self.acceleration_data[2]
+        )
+        self.braking_params, _ = curve_fit(
+            self.long_force, self.braking_data[:2], self.braking_data[2]
+        )
 
         # Motor coefficients
         self.Cm1 = self.acceleration_params[0]  # Motor parameter 1
@@ -75,7 +79,12 @@ class DynamicBicycleModel:
 
     @staticmethod
     def long_force(data, cm1, cm2, cm3, cphys1, cphys2, cphys3):
-        return (cm1 - cm2 * data[0] - cm3 * data[0] ** 2) * data[1] - cphys1 - cphys2 * data[0] - cphys3 * data[0] ** 2
+        return (
+            (cm1 - cm2 * data[0] - cm3 * data[0] ** 2) * data[1]
+            - cphys1
+            - cphys2 * data[0]
+            - cphys3 * data[0] ** 2
+        )
 
     def predict_next_state(self, initial_state, u, dt=0.05):
         """
@@ -99,7 +108,11 @@ class DynamicBicycleModel:
             / self.F_z0
             * np.sin(
                 self.Cf
-                * np.arctan2(self.Bf * alpha_f - self.Ef * (self.Bf * alpha_f - np.arctan2(self.Bf * alpha_f, 1)), 1)
+                * np.arctan2(
+                    self.Bf * alpha_f
+                    - self.Ef * (self.Bf * alpha_f - np.arctan2(self.Bf * alpha_f, 1)),
+                    1,
+                )
             )
         )
         F_ry = (
@@ -109,24 +122,40 @@ class DynamicBicycleModel:
             / self.F_z0
             * np.sin(
                 self.Cr
-                * np.arctan2(self.Br * alpha_r - self.Er * (self.Br * alpha_r - np.arctan2(self.Br * alpha_r, 1)), 1)
+                * np.arctan2(
+                    self.Br * alpha_r
+                    - self.Er * (self.Br * alpha_r - np.arctan2(self.Br * alpha_r, 1)),
+                    1,
+                )
             )
         )
 
         # F_fy = self.Df * np.sin(self.Cf * np.arctan(self.Bf * alpha_f))
         # F_ry = self.Dr * np.sin(self.Cr * np.arctan(self.Br * alpha_r))
-        F_fric = -self.Cfric1 - self.Cfric2 * vel_x - self.Cfric3 * vel_x ** 2
-        F_rx_braking = ((self.Cb1 - self.Cb2 * vel_x - self.Cb3 * vel_x ** 2) * (1 - self.brake_bias)) * min(0.0, acc)
-        F_rx_acceleration = (self.Cm1 - self.Cm2 * vel_x - self.Cm3 * vel_x ** 2) * max(0.0, acc)
+        F_fric = -self.Cfric1 - self.Cfric2 * vel_x - self.Cfric3 * vel_x**2
+        F_rx_braking = (
+            (self.Cb1 - self.Cb2 * vel_x - self.Cb3 * vel_x**2) * (1 - self.brake_bias)
+        ) * min(0.0, acc)
+        F_rx_acceleration = (self.Cm1 - self.Cm2 * vel_x - self.Cm3 * vel_x**2) * max(
+            0.0, acc
+        )
         F_rx = F_rx_braking + F_rx_acceleration
-        F_fx = (self.Cb1 - self.Cb2 * vel_x - self.Cb3 * vel_x ** 2) * self.brake_bias * min(0.0, acc)
+        F_fx = (
+            (self.Cb1 - self.Cb2 * vel_x - self.Cb3 * vel_x**2)
+            * self.brake_bias
+            * min(0.0, acc)
+        )
 
         x_dot = np.zeros(6)
         x_dot[0] = vel_x * np.cos(yaw) - vel_y * np.sin(yaw)
         x_dot[1] = vel_x * np.sin(yaw) + vel_y * np.cos(yaw)
         x_dot[2] = yaw_rate
-        x_dot[3] = (1 / self.mass) * (F_rx + F_fx + F_fric - F_fy * np.sin(delta) + self.mass * vel_y * yaw_rate)
-        x_dot[4] = (1 / self.mass) * (F_ry + F_fy * np.cos(delta) - self.mass * vel_x * yaw_rate)
+        x_dot[3] = (1 / self.mass) * (
+            F_rx + F_fx + F_fric - F_fy * np.sin(delta) + self.mass * vel_y * yaw_rate
+        )
+        x_dot[4] = (1 / self.mass) * (
+            F_ry + F_fy * np.cos(delta) - self.mass * vel_x * yaw_rate
+        )
         x_dot[5] = (1 / self.Iz) * (F_fy * self.lf * np.cos(delta) - F_ry * self.lr)
 
         return (initial_state + x_dot * dt, x_dot, [F_fy, F_ry, F_fx, F_rx])

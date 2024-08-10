@@ -1,9 +1,8 @@
 import copy
 
-import numpy as np
 import cv2
 from loguru import logger
-
+import numpy as np
 from utils import CameraInfo
 
 CAMERA_CONFIG = {

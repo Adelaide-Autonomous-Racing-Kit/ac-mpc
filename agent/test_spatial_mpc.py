@@ -1,18 +1,16 @@
 import time
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 from ace.steering import SteeringGeometry
 from control.controller import build_mpc
 from control.utils import (
-    get_hairpin_track,
     get_chicane_track,
     get_curved_track,
+    get_hairpin_track,
     get_straight_track,
 )
-
 from loguru import logger
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def main():

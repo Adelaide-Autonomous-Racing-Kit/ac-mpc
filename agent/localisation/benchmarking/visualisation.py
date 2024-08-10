@@ -1,13 +1,11 @@
 from typing import Dict, List
 
+from localisation.benchmarking.test_localiser import TestLocaliser
+from localisation.benchmarking.tracker import LocalisationTracker
+from loguru import logger
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from loguru import logger
-
-from localisation.benchmarking.test_localiser import TestLocaliser
-from localisation.benchmarking.tracker import LocalisationTracker
-
 
 MONZA_X_LIMIT = [-1200, 300]
 MONZA_Y_LIMIT = [-1400, 1000]

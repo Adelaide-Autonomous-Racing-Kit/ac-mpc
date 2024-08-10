@@ -1,10 +1,9 @@
 import argparse
 
-import numpy as np
-from loguru import logger
-
-from utils import load
 from localisation.benchmarking.benchmark_localisation import BenchmarkLocalisation
+from loguru import logger
+import numpy as np
+from utils import load
 
 
 def main():

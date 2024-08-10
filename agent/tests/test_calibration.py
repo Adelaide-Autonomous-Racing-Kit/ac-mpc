@@ -1,27 +1,27 @@
 import copy
 
-import numpy as np
 import cv2
+import numpy as np
 
-from ..perception.utils import CameraInfo, DUMMY_GROUND_POINTS
+from ..perception.utils import DUMMY_GROUND_POINTS, CameraInfo
 
 CAMERA_CONFIG = {
     "width": 1920,
     "height": 1080,
     "position": [0.000102, 2.099975, 0.7],
     "rotation_deg": [90.0, 0.0, 0.0],
-    "vertical_fov": 60
+    "vertical_fov": 60,
 }
 
-BEV_ROAD = np.zeros(400,400, 3)
-BEV_ROAD[150:200, :] = (255,0,0)
+BEV_ROAD = np.zeros(400, 400, 3)
+BEV_ROAD[150:200, :] = (255, 0, 0)
 BEV_ROAD[200:250, :] = (0, 0, 255)
-
 
 
 # def test_homography_consistency()
 
 # def test_overhead_camera_reprojection_calculations()
+
 
 def test_yaw_rotation():
     camera_config = copy.copy(CAMERA_CONFIG)
@@ -37,13 +37,10 @@ def test_yaw_rotation():
     cv2.waitKey(0)
 
 
-
 # def test_pitch_rotation():
 
 
-
 # def test_roll_rotation():
-
 
 
 def test_image_to_ground_projection():
@@ -53,7 +50,9 @@ def test_image_to_ground_projection():
     projected_ground_points = np.matmul(camera_info.homography_i2w, image_points.T)
     projected_ground_points /= projected_ground_points[2]
 
-    assert np.all(np.isclose(projected_ground_points, DUMMY_GROUND_POINTS)), "Homography "
+    assert np.all(
+        np.isclose(projected_ground_points, DUMMY_GROUND_POINTS)
+    ), "Homography "
 
 
 if __name__ == "__main__":

@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Dict, Union
-from types import SimpleNamespace
 
-import osqp
+from types import SimpleNamespace
+from typing import Dict, Union
+
 import numpy as np
+import osqp
 from scipy import sparse
 
 
