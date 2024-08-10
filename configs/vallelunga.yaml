@@ -5,7 +5,7 @@ multithreading: True
 test: False
 seed: 0
 vehicle:
-    data_path: "data/audi_r8_lms_2016"
+    data_path: "data/vehicles/audi_r8_lms_2016"
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
@@ -15,7 +15,7 @@ data_collection:
 is_streaming: False
 perception:
     model_segmentation: True
-    model_path: "models/segmentation/vallelunga-fpn-resnet-18-v1.1.pt"
+    model_path: "data/models/segmentation/vallelunga-fpn-resnet-18-v1.2.pt"
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -27,7 +27,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: track_maps/vallelunga_verysmooth_2.npy
+    map_path: data/maps/vallelunga_verysmooth_3.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -60,7 +60,7 @@ localisation:
         offset: 10
         rotation: 45 # deg
         minimum_particles: 20
-        track_limit: 30
+        track_limit: 28
     score_distribution:
         mean: 0
         sigma: 10
@@ -70,7 +70,7 @@ localisation:
 racing:
     control:
         horizon: 100
-        unlocalised_max_speed: 32
+        unlocalised_max_speed: 26
         speed_profile_constraints:
             v_min: 8.0
             v_max: 84.0

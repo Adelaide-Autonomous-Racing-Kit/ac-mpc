@@ -1,11 +1,11 @@
-experiment_name: "vallelunga_audi"
-data_path: localisation_data/vallelunga_audi/baseline
-n_observations_between_plots: 25
+experiment_name: monza_audi
+data_path: data/localisation/monza_audi/racing
+n_observations_between_plots: 10
 seed: 0
 vehicle:
-    data_path: "data/audi_r8_lms_2016"
+    data_path: data/vehicles/audi_r8_lms_2016"
 mapping:
-  map_path: track_maps/vallelunga_verysmooth_2.npy
+  map_path: data/maps/monza_verysmooth_2.npy
 localisation:
     n_particles: 500
     n_converged_particles: 500
@@ -20,7 +20,7 @@ localisation:
         offset: 10
         rotation: 45 # deg
         minimum_particles: 20
-        track_limit: 30
+        track_limit: 25.0
     score_distribution:
         mean: 0
         sigma: 10
@@ -28,4 +28,4 @@ localisation:
         maximum_distance: 50
         maximum_angle: 90 # deg
     collect_benchmark_observations: False
-    benchmark_observations_save_location: localisation_data
+    benchmark_observations_save_location: data/localisation

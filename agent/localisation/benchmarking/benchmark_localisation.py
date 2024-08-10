@@ -57,7 +57,7 @@ class BenchmarkLocalisation:
         for record in tqdm(self._recording):
             if "control_command" in record:
                 time_for_step = self._step_particles(record)
-                #  self._visualiser.update_particles()
+                self._visualiser.update_particles()
                 self._tracker.update_step(time_for_step)
             if "tracklimits" in record:
                 observation = record["tracklimits"]

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List
+from typing import Tuple
 
 import numpy as np
 
@@ -30,7 +30,7 @@ class TemporalCommandSelector:
         distances = self._calculate_temporal_distances(elapsed_time)
         index = np.argmin(abs(distances))
         if distances[index] > 0:
-            index - 1
+            index -= 1
         return index
 
     def _calculate_temporal_distances(self, elapsed_time: float) -> np.array:
@@ -56,7 +56,9 @@ class TemporalCommandInterpolator:
         index_a, index_b = self._get_indices_of_commands_to_interpolate(elapsed_time)
         return self._interpolate_command(index_a, index_b, elapsed_time)
 
-    def _get_indices_of_commands_to_interpolate(self, elapsed_time: float) -> List[int]:
+    def _get_indices_of_commands_to_interpolate(
+        self, elapsed_time: float
+    ) -> Tuple[int, int]:
         index_a, distance = self._get_closet_command_index(elapsed_time)
         if self._is_start_or_end_index(index_a):
             index_b = index_a
@@ -66,7 +68,7 @@ class TemporalCommandInterpolator:
             index_b = index_a - 1
         return index_a, index_b
 
-    def _get_closet_command_index(self, elapsed_time: float) -> int:
+    def _get_closet_command_index(self, elapsed_time: float) -> Tuple[int, int]:
         distances = self._calculate_temporal_distances(elapsed_time)
         index = np.argmin(abs(distances))
         return index, distances[index]
