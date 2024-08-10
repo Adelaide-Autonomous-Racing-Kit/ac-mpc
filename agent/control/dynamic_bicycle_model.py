@@ -5,7 +5,6 @@ from scipy.optimize import curve_fit
 
 class DynamicBicycleModel:
     def __init__(self):
-        ##### param #####
         # Pacejka parameters (f for front, r for rear)
         self.F_z0 = 3  # Nominal z force on tyre N
 
