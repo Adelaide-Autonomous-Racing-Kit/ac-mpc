@@ -1,7 +1,8 @@
-while :
+#!/bin/bash
+while true;
 do
-bash run.sh /configs/monza.yaml
-bash run.sh /configs/spa.yaml
-bash run.sh /configs/silverstone.yaml
-bash run.sh /configs/vallelunga.yaml
+bash scripts/run.sh /configs/monza.yaml
+bash scripts/run.sh /configs/spa.yaml
+bash scripts/run.sh /configs/silverstone.yaml
+bash scripts/run.sh /configs/vallelunga.yaml
 done
