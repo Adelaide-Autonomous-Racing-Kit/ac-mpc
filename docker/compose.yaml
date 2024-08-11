@@ -1,0 +1,33 @@
+services:
+  ac-l2r:
+    build:
+      context: ..
+      dockerfile: ./docker/dockerfile
+    image: ac-l2r
+    container_name: ac-l2r
+    shm_size: 80G
+    user: ${USER_ID}:${GROUP_ID}
+    volumes:
+      - ../data:/data/
+      - ../configs:/configs/
+      - ${HOME}/named_pipes:/execution_pipes/
+      - ${HOME}/.cxoffice:${HOME}/.cxoffice
+      - ${HOME}/Documents/Assetto Corsa:$HOME/Documents/Assetto Corsa
+      - ${HOME}/.Xauthority:${HOME}/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+    environment:
+      - DISPLAY=${DISPLAY}
+      - CONFIG_PATH=${CONFIG_PATH}
+    command: bash -c "python src/acl2r/main.py --config=${CONFIG_PATH}"
+    devices:
+      - /dev/uinput:/dev/uinput
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]

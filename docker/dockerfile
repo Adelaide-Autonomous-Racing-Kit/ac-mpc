@@ -1,0 +1,22 @@
+FROM nvcr.io/nvidia/pytorch:24.02-py3
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y libegl1 libgl1 ffmpeg \
+    libsm6 libxext6 python3-tk libpq-dev x11-xserver-utils \
+    '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev \
+    libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    x11-apps xauth libturbojpeg
+
+WORKDIR /code
+# Install ACI
+RUN pip install git+https://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@github.com/Adelaide-Autonomous-Racing-Challenge/ac-interface.git@requirements
+# Install ACE
+RUN pip install git+https://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@github.com/Adelaide-Autonomous-Racing-Challenge/ac-extras.git
+# Fix opencv
+RUN pip install opencv-fixer==0.2.5
+RUN python -c "from opencv_fixer import AutoFix; AutoFix()"
+# Install ACL2R
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY setup.py .
+COPY src src
+RUN pip install .

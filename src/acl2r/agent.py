@@ -309,7 +309,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         plt.gray()
         fig.colorbar(sp)
         fig.tight_layout()
-        plt.savefig(f"{self._experiment_name}_speed.png")
+        filename = f"{self._experiment_name}_speed.png"
+        output_path = f"{self._save_speed_profile_path}/{filename}"
+        plt.savefig(output_path)
         # plt.show()
 
     def teardown(self):
@@ -385,6 +387,7 @@ class ElTuarMPC(AssettoCorsaInterface):
 
     def _setup_mapper(self):
         self.mapper = MapMaker(verbose=self.cfg["debugging"]["verbose"])
+        self._save_speed_profile_path = self.cfg["debugging"]["speed_profile_path"]
 
     def _setup_localisation(self):
         if self._is_using_localisation or self._is_collecting_localisation_data:

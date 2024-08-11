@@ -1,21 +1,19 @@
 experiment_name: monza_audi
-save_path: data/testing
-evaluation: False
 multithreading: True
-test: False
 seed: 0
 vehicle:
-    data_path: data/vehicles/audi_r8_lms_2016
+    data_path: /data/vehicles/audi_r8_lms_2016
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
+    speed_profile_path: /data/speed_profiles
 is_streaming: False
 data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: data/models/segmentation/monza-fpn-resnet-18-v1.1.pt
+    model_path: /data/models/segmentation/monza-fpn-resnet-18-v1.1.pt
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -27,7 +25,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: data/maps/monza_verysmooth_2.npy
+    map_path: /data/maps/monza_verysmooth_2.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -45,7 +43,7 @@ mapping:
         final_cost: [0.0, 0.0, 1.0e-2] # e_y, e_psi, t
 localisation:
     collect_benchmark_observations: False
-    benchmark_observations_save_location: data/localisation
+    benchmark_observations_save_location: /data/localisation
     use_localisation: True
     n_particles: 500
     n_converged_particles: 500
@@ -119,6 +117,7 @@ aci:
         ASSISTS:
             TYRE_BLANKETS: 1
     capture:
+        is_docker: True
         images:
             image_format: "BGR0"
             wait_for_new_frames: False
