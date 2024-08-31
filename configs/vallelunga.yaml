@@ -25,7 +25,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: /data/maps/vallelunga_verysmooth_3.npy
+    map_path: /data/maps/vallelunga_verysmooth.npy
     create_map: False
     number_of_mapping_laps: 2
     control:

@@ -20,7 +20,7 @@ services:
     environment:
       - DISPLAY=${DISPLAY}
       - CONFIG_PATH=${CONFIG_PATH}
-    command: bash -c "python src/acl2r/main.py --config=${CONFIG_PATH}"
+    command: bash -c "python src/acmpc/main.py --config=${CONFIG_PATH}"
     devices:
       - /dev/uinput:/dev/uinput
     network_mode: host

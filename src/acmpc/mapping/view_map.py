@@ -84,7 +84,7 @@ def plot_map(
 
     ax.set_aspect(1)
     plt.gray()
-    plt.savefig(f"track_maps/{title}.png")
+    plt.savefig(f"data/maps/{title}.png")
     plt.show()
 
 

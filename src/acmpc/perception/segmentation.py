@@ -37,7 +37,7 @@ class TrackSegmenter:
         """
         self._setup_device()
         model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10)
-        model.load_state_dict(torch.load(self._model_weights_path))
+        model.load_state_dict(torch.load(self._model_weights_path, weights_only=True))
         model.eval()
         model.to(self.device)
         if self._compile_model:

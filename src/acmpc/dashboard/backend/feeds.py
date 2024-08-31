@@ -142,12 +142,14 @@ MAP_VISUALISATION_LIMITS = {
     "spa": MapVisualisationLimit(-700, 700, -1020, 1120),
     "ks_vallelunga": MapVisualisationLimit(-640, 740, -260, 360),
     "ks_silverstone": MapVisualisationLimit(-560, 560, -900, 900),
+    "abudhabi_euroracers_v2": MapVisualisationLimit(-900, 800,-380, 660),
 }
 MAP_TRANSFORMATION = {
     "monza": flip_and_rotate,
     "spa": flip_and_rotate,
     "ks_vallelunga": flip,
     "ks_silverstone": flip_and_rotate,
+    "abudhabi_euroracers_v2": flip,
 }
 ARROW_LENGTH = 25
 
