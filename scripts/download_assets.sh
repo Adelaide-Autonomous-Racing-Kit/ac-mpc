@@ -30,4 +30,19 @@ maybe_download_asset "$MAPS_PATH/spa_verysmooth.npy" "$HOST_URL/maps/spa/spa_ver
 maybe_download_asset "$MAPS_PATH/silverstone_verysmooth.npy" "$HOST_URL/maps/silverstone/silverstone_verysmooth.npy"
 maybe_download_asset "$MAPS_PATH/vallelunga_verysmooth.npy" "$HOST_URL/maps/vallelunga/vallelunga_verysmooth.npy"
 # Setups
+SETUPS_PATH="$HOME/Documents/Assetto Corsa/setups"
+# Audi R8 LMS 2016
+AUDI_R8_SETUPS_PATH="$SETUPS_PATH/ks_audi_r8_lms_2016"
 # Make folders
+mkdir -p "$AUDI_R8_SETUPS_PATH/monza"
+mkdir -p "$AUDI_R8_SETUPS_PATH/spa"
+mkdir -p "$AUDI_R8_SETUPS_PATH/ks_silverstone"
+mkdir -p "$AUDI_R8_SETUPS_PATH/ks_vallelunga"
+mkdir -p "$AUDI_R8_SETUPS_PATH/abudhabi_euroracers_v2"
+# Download setups
+maybe_download_asset "$AUDI_R8_SETUPS_PATH/monza/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/monza/0.ini"
+maybe_download_asset "$AUDI_R8_SETUPS_PATH/spa/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/spa/0.ini"
+maybe_download_asset "$AUDI_R8_SETUPS_PATH/ks_silverstone/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/silverstone/0.ini"
+maybe_download_asset "$AUDI_R8_SETUPS_PATH/ks_vallelunga/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/vallelunga/0.ini"
+# maybe_download_asset "$AUDI_R8_SETUPS_PATH/abudhabi_euroracers_v2/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/yas-marina/0.ini"
+
