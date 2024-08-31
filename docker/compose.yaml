@@ -1,10 +1,10 @@
 services:
-  ac-l2r:
+  ac-mpc:
     build:
       context: ..
       dockerfile: ./docker/dockerfile
-    image: ac-l2r
-    container_name: ac-l2r
+    image: ac-mpc
+    container_name: ac-mpc
     shm_size: 80G
     user: ${USER_ID}:${GROUP_ID}
     volumes:
