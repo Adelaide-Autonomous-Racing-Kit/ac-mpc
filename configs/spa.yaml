@@ -2,18 +2,18 @@ experiment_name: spa_audi
 multithreading: True
 seed: 0
 vehicle:
-    data_path: /data/vehicles/audi_r8_lms_2016
+    data_path: data/vehicles/audi_r8_lms_2016
 debugging:
     birds_eye_view_scale: 4
     birds_eye_view_size: 200
     verbose: True
-    speed_profile_path: /data/speed_profiles
+    speed_profile_path: data/speed_profiles
 is_streaming: False
 data_collection:
     collect_images: 0
 perception:
     model_segmentation: True
-    model_path: /data/models/segmentation/spa-fpn-resnet-18-v1.pt
+    model_path: data/models/segmentation/spa-fpn-resnet-18-v1.pt
     single_cam: True
     compile_model: False
     image_width: 1280
@@ -43,7 +43,7 @@ mapping:
         final_cost: [0.0, 0.0, 1.0e-6] # e_y, e_psi, t
 localisation:
     collect_benchmark_observations: False
-    benchmark_observations_save_location: /data/localisation
+    benchmark_observations_save_location: data/localisation
     use_localisation: True
     n_particles: 500
     n_converged_particles: 500
@@ -117,7 +117,8 @@ aci:
         ASSISTS:
             TYRE_BLANKETS: 1
     capture:
-        is_docker: True
+        is_docker: False
+        is_proton: True
         images:
             image_format: "BGR0"
             wait_for_new_frames: False

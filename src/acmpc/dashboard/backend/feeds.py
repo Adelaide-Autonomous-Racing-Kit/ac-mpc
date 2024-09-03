@@ -19,6 +19,8 @@ from dashboard.visualisation.utils import COLOUR_LIST, draw_arrow, draw_track_li
 import numpy as np
 from utils import load
 
+from loguru import logger
+
 
 class FeedThread(QThread):
     updateFrame = pyqtSignal(QImage)
@@ -142,7 +144,8 @@ MAP_VISUALISATION_LIMITS = {
     "spa": MapVisualisationLimit(-700, 700, -1020, 1120),
     "ks_vallelunga": MapVisualisationLimit(-640, 740, -260, 360),
     "ks_silverstone": MapVisualisationLimit(-560, 560, -900, 900),
-    "abudhabi_euroracers_v2": MapVisualisationLimit(-900, 800,-380, 660),
+    "abudhabi_euroracers_v2": MapVisualisationLimit(-900, 800, -380, 660),
+    "ks_nordschleife": MapVisualisationLimit(-3500, 2700, -2500, 4000),
 }
 MAP_TRANSFORMATION = {
     "monza": flip_and_rotate,
@@ -150,6 +153,7 @@ MAP_TRANSFORMATION = {
     "ks_vallelunga": flip,
     "ks_silverstone": flip_and_rotate,
     "abudhabi_euroracers_v2": flip,
+    "ks_nordschleife": flip,
 }
 ARROW_LENGTH = 25
 
@@ -203,7 +207,10 @@ class MapFeed(VisualisationThread):
         map_frame = np.copy(self._map_frame)
         self._draw_ego_position(map_frame)
         self._draw_estimated_position(map_frame)
-        return self._map_transform(map_frame)
+        if self._track_name == "ks_nordschleife":
+            map_frame = cv2.resize(map_frame, (0, 0), fx=0.1, fy=0.1)
+        map_frame = self._map_transform(map_frame)
+        return map_frame
 
     def _draw_ego_position(self, map_frame: np.array):
         pose = self._agent.game_pose.pose_dict

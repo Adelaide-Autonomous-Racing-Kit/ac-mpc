@@ -118,6 +118,7 @@ aci:
             TYRE_BLANKETS: 1
     capture:
         is_docker: False
+        is_proton: True
         images:
             image_format: "BGR0"
             wait_for_new_frames: False
