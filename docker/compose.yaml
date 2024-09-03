@@ -11,8 +11,12 @@ services:
       - ../data:/data/
       - ../configs:/configs/
       - ${HOME}/named_pipes:/execution_pipes/
+      # CrossOver folders
       - ${HOME}/.cxoffice:${HOME}/.cxoffice
       - ${HOME}/Documents/Assetto Corsa:$HOME/Documents/Assetto Corsa
+      # Proton folders
+      - ${HOME}/.local/share/Steam/steamapps/:$HOME/.local/share/Steam/steamapps
+      # X-server access
       - ${HOME}/.Xauthority:${HOME}/.Xauthority
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /etc/passwd:/etc/passwd:ro

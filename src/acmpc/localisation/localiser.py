@@ -240,7 +240,7 @@ class LocalisationProcess(mp.Process):
         distance = np.mean(np.linalg.norm(observation[1:] - observation[:-1], axis=1))
         downsample = distance / self._average_distance_between_map_points
         n_points = len(observation) * (downsample)
-        mask = np.zeros(len(observation), dtype=np.bool)
+        mask = np.zeros(len(observation), dtype=np.bool_)
         indices = np.linspace(0, len(observation) - 1, int(n_points), dtype=np.uint16)
         mask[indices] = True
         return observation[mask]
