@@ -1,5 +1,4 @@
 scipy>=1.14
-
 osqp
 git+https://github.com/jvkersch/pyconcorde
 segmentation-models-pytorch
