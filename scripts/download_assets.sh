@@ -42,6 +42,8 @@ maybe_download_asset "$MAPS_PATH/monza_verysmooth.npy" "$HOST_URL/maps/monza/mon
 maybe_download_asset "$MAPS_PATH/spa_verysmooth.npy" "$HOST_URL/maps/spa/spa_verysmooth.npy"
 maybe_download_asset "$MAPS_PATH/silverstone_verysmooth.npy" "$HOST_URL/maps/silverstone/silverstone_verysmooth.npy"
 maybe_download_asset "$MAPS_PATH/vallelunga_verysmooth.npy" "$HOST_URL/maps/vallelunga/vallelunga_verysmooth.npy"
+maybe_download_asset "$MAPS_PATH/yas_marina_verysmooth.npy" "$HOST_URL/maps/yas-marina/yas_marina_verysmooth.npy"
+maybe_download_asset "$MAPS_PATH/nordschleife_smooth.npy" "$HOST_URL/maps/nordschleife/nordschleife_smooth.npy"
 # Setups
 # Audi R8 LMS 2016
 AUDI_R8_SETUPS_PATH="$SETUPS_PATH/ks_audi_r8_lms_2016"
