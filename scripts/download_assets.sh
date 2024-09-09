@@ -37,6 +37,7 @@ maybe_download_asset "$MODELS_PATH/silverstone-fpn-resnet-18-v1.1.pt" "$HOST_URL
 maybe_download_asset "$MODELS_PATH/vallelunga-fpn-resnet-18-v1.2.pt" "$HOST_URL/models/segmentation/vallelunga/vallelunga-fpn-resnet-18-v1.2.pt"
 maybe_download_asset "$MODELS_PATH/yas_marina-fpn-resnet-18-v1.pt" "$HOST_URL/models/segmentation/yas-marina/yas_marina-fpn-resnet-18-v1.pt"
 maybe_download_asset "$MODELS_PATH/nordschleife-fpn-resnet-18-v1.pt" "$HOST_URL/models/segmentation/nordschleife/nordschleife-fpn-resnet-18-v1.pt"
+maybe_download_asset "$MODELS_PATH/bathurst-fpn-resnet-18-v1.pt" "$HOST_URL/models/segmentation/bathurst/bathurst-fpn-resnet-18-v1.pt"
 # Maps
 maybe_download_asset "$MAPS_PATH/monza_verysmooth.npy" "$HOST_URL/maps/monza/monza_verysmooth.npy"
 maybe_download_asset "$MAPS_PATH/spa_verysmooth.npy" "$HOST_URL/maps/spa/spa_verysmooth.npy"
