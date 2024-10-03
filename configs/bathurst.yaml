@@ -25,26 +25,26 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: data/maps/bathurst_smooth.npy
-    create_map: True
+    map_path: data/maps/bathurst_verysmooth.npy
+    create_map: False
     number_of_mapping_laps: 2
     control:
         horizon: 100
         speed_profile_constraints:
-            v_min: 5.0
-            v_max: 20.0
+            v_min: 2.0
+            v_max: 12.0
             a_min: -3.0
             a_max: 6.0
             ay_max: 1.0
             ki_min: 0.0
-            end_velocity: 10.0
+            end_velocity: 6.0
         step_cost: [5.0e-3, 5.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 1.0e+1] # velocity, steering
         final_cost: [0.0, 0.0, 1.0e-6] # e_y, e_psi, t
 localisation:
     collect_benchmark_observations: False
     benchmark_observations_save_location: data/localisation
-    use_localisation: False
+    use_localisation: True
     n_particles: 500
     n_converged_particles: 500
     sampling_noise:
@@ -77,7 +77,7 @@ racing:
             ay_max: 3.0
             ki_min: 0.0
             end_velocity: 14.0
-        step_cost: [2.0e-4, 0.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [1.0e-3, 0.0, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:
@@ -102,10 +102,8 @@ steering_pid:
 aci:
     race.ini:
         RACE:
-            TRACK: "rt_batjurst"
+            TRACK: "rt_bathurst"
             CONFIG_TRACK: ""
-        SESSION_0:
-            SPAWN_SET: HOTLAP_START
     video.ini:
         VIDEO:
             WIDTH: 1280

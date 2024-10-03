@@ -146,6 +146,7 @@ MAP_VISUALISATION_LIMITS = {
     "ks_silverstone": MapVisualisationLimit(-560, 560, -900, 900),
     "abudhabi_euroracers_v2": MapVisualisationLimit(-900, 800, -380, 660),
     "ks_nordschleife": MapVisualisationLimit(-3500, 2700, -2500, 4000),
+    "rt_bathurst": MapVisualisationLimit(-500, 1040, -700, 1600),
 }
 MAP_TRANSFORMATION = {
     "monza": flip_and_rotate,
@@ -154,6 +155,7 @@ MAP_TRANSFORMATION = {
     "ks_silverstone": flip_and_rotate,
     "abudhabi_euroracers_v2": flip,
     "ks_nordschleife": flip,
+    "rt_bathurst": flip_and_rotate,
 }
 ARROW_LENGTH = 25
 

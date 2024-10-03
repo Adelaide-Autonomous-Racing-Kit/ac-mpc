@@ -21,24 +21,24 @@ def main(args: argparse.Namespace):
         centre = MapMaker.upsample_track(centre)
         outside = np.stack(
             (
-                MapMaker.smooth_boi(outside, 0, window_length=360, polyorder=3),
-                MapMaker.smooth_boi(outside, 1, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(outside, 0, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(outside, 1, window_length=180, polyorder=3),
             ),
             axis=1,
         )
 
         inside = np.stack(
             (
-                MapMaker.smooth_boi(inside, 0, window_length=360, polyorder=3),
-                MapMaker.smooth_boi(inside, 1, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(inside, 0, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(inside, 1, window_length=180, polyorder=3),
             ),
             axis=1,
         )
 
         centre = np.stack(
             (
-                MapMaker.smooth_boi(centre, 0, window_length=360, polyorder=3),
-                MapMaker.smooth_boi(centre, 1, window_length=360, polyorder=3),
+                MapMaker.smooth_boi(centre, 0, window_length=180, polyorder=3),
+                MapMaker.smooth_boi(centre, 1, window_length=180, polyorder=3),
             ),
             axis=1,
         )
