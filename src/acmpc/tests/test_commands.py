@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock
 
-from commands import TemporalCommandInterpolator
+from control.commands import TemporalCommandInterpolator
 import numpy as np
 
 
