@@ -45,6 +45,7 @@ maybe_download_asset "$MAPS_PATH/silverstone_verysmooth.npy" "$HOST_URL/maps/sil
 maybe_download_asset "$MAPS_PATH/vallelunga_verysmooth.npy" "$HOST_URL/maps/vallelunga/vallelunga_verysmooth.npy"
 maybe_download_asset "$MAPS_PATH/yas_marina_verysmooth.npy" "$HOST_URL/maps/yas-marina/yas_marina_verysmooth.npy"
 maybe_download_asset "$MAPS_PATH/nordschleife_smooth.npy" "$HOST_URL/maps/nordschleife/nordschleife_smooth.npy"
+maybe_download_asset "$MAPS_PATH/bathurst_verysmooth.npy" "$HOST_URL/maps/bathurst/bathurst_smooth.npy"
 # Setups
 # Audi R8 LMS 2016
 AUDI_R8_SETUPS_PATH="$SETUPS_PATH/ks_audi_r8_lms_2016"
@@ -55,10 +56,13 @@ mkdir -p "$AUDI_R8_SETUPS_PATH/ks_nordschleife"
 mkdir -p "$AUDI_R8_SETUPS_PATH/ks_silverstone"
 mkdir -p "$AUDI_R8_SETUPS_PATH/ks_vallelunga"
 mkdir -p "$AUDI_R8_SETUPS_PATH/abudhabi_euroracers_v2"
+mkdir -p "$AUDI_R8_SETUPS_PATH/rt_bathurst"
 # Download setups
 maybe_download_asset "$AUDI_R8_SETUPS_PATH/monza/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/monza/0.ini"
 maybe_download_asset "$AUDI_R8_SETUPS_PATH/spa/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/spa/0.ini"
 maybe_download_asset "$AUDI_R8_SETUPS_PATH/ks_silverstone/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/silverstone/0.ini"
 maybe_download_asset "$AUDI_R8_SETUPS_PATH/ks_vallelunga/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/vallelunga/0.ini"
 # maybe_download_asset "$AUDI_R8_SETUPS_PATH/abudhabi_euroracers_v2/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/yas-marina/0.ini"
+# maybe_download_asset "$AUDI_R8_SETUPS_PATH/ks_nordschleife/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/nordschleife/0.ini"
+# maybe_download_asset "$AUDI_R8_SETUPS_PATH/rt_bathurst/0.ini" "$HOST_URL/setups/audi-r8-lms-2016/bathurst/0.ini"
 
