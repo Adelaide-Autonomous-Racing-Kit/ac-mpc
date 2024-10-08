@@ -58,8 +58,9 @@ class Perceiver:
         return self._perceiver.output_visualisation
 
     def perceive(self, obs: ObservationDict):
-        self._preprocess_observations(obs)
-        self._submit_image_to_perceiver(obs)
+        if not obs["is_image_stale"]:
+            self._preprocess_observations(obs)
+            self._submit_image_to_perceiver(obs)
 
     def _preprocess_observations(self, obs: ObservationDict):
         obs["CameraFrontRGB"] = self._encode_decode_image(obs["CameraFrontRGB"])

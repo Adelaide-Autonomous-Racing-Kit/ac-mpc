@@ -16,6 +16,7 @@ class ObservationDict(dict):
         self["CameraFrontSegm"] = masks[0]
 
     def _setup(self, obs: Dict):
+        self["is_image_stale"] = obs["is_image_stale"]
         self["CameraFrontRGB"] = obs["image"]
         pose = self._unpack_pose(obs["state"])
         self["speed"] = pose["velocity"]
