@@ -6,7 +6,7 @@ Make sure ACI is installed and working correctly by following the steps outlined
 
 To use the diagnostics dashboard install the PyQt6 system dependency: `sudo apt-get install libxcb-cursor0`
 
-To download assets required to run our baseline examples run `bash scripts/download_assets.sh`
+To download assets required to run our baseline examples run `bash scripts/download_assets.sh <proton/crossover>`
 
 ## Run
 ### Bare Metal
