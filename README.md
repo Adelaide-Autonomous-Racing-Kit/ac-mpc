@@ -1,4 +1,4 @@
-# ac-mpc
+# Assetto Corsa Model Predictive Control
 Full stack autonomous racing solution based on deeplearnt perception and MPC using ACI.
 
 ## Installation
