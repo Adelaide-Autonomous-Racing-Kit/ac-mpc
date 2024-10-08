@@ -1,0 +1,11 @@
+scipy>=1.14
+osqp
+git+https://github.com/jvkersch/pyconcorde
+segmentation-models-pytorch
+ruamel.yaml
+matplotlib
+simple-pid
+PyQt6
+git+https://github.com/Adelaide-Autonomous-Racing-Challenge/ac-state.git
+git+https://github.com/Adelaide-Autonomous-Racing-Challenge/ac-interface.git
+git+https://github.com/Adelaide-Autonomous-Racing-Challenge/ac-extras.git

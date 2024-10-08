@@ -1,0 +1,18 @@
+FROM nvcr.io/nvidia/pytorch:23.10-py3
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y libegl1 libgl1 ffmpeg \
+    libsm6 libxext6 python3-tk libpq-dev x11-xserver-utils \
+    '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev \
+    libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    x11-apps xauth libturbojpeg
+
+WORKDIR /code
+# Install ACL2R
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+# Fix opencv
+RUN pip install opencv-fixer==0.2.5
+RUN python -c "from opencv_fixer import AutoFix; AutoFix()"
+COPY setup.py .
+COPY src src
+RUN pip install .

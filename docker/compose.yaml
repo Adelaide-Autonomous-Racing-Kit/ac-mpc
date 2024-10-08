@@ -1,0 +1,37 @@
+services:
+  ac-mpc:
+    build:
+      context: ..
+      dockerfile: ./docker/dockerfile
+    image: ac-mpc
+    container_name: ac-mpc
+    shm_size: 80G
+    user: ${USER_ID}:${GROUP_ID}
+    volumes:
+      - ../data:/data/
+      - ../configs:/configs/
+      - ${HOME}/named_pipes:/execution_pipes/
+      # CrossOver folders
+      - ${HOME}/.cxoffice:${HOME}/.cxoffice
+      - ${HOME}/Documents/Assetto Corsa:$HOME/Documents/Assetto Corsa
+      # Proton folders
+      - ${HOME}/.local/share/Steam/steamapps/:$HOME/.local/share/Steam/steamapps
+      # X-server access
+      - ${HOME}/.Xauthority:${HOME}/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+    environment:
+      - DISPLAY=${DISPLAY}
+      - CONFIG_PATH=${CONFIG_PATH}
+    command: bash -c "python src/acmpc/main.py --config=${CONFIG_PATH}"
+    devices:
+      - /dev/uinput:/dev/uinput
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]

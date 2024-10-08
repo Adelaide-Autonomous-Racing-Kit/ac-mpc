@@ -1,0 +1,31 @@
+experiment_name: monza_audi
+data_path: data/localisation/monza_audi/racing
+n_observations_between_plots: 10
+seed: 0
+vehicle:
+    data_path: data/vehicles/audi_r8_lms_2016"
+mapping:
+  map_path: data/maps/monza_verysmooth_2.npy
+localisation:
+    n_particles: 500
+    n_converged_particles: 500
+    sampling_noise:
+        x: 1.1
+        y: 1.1
+        yaw: 3.0 # degrees
+    control_noise:
+        velocity: 0.25
+        yaw:  2.0 # degrees
+    thresholds:
+        offset: 10
+        rotation: 45 # deg
+        minimum_particles: 20
+        track_limit: 25.0
+    score_distribution:
+        mean: 0
+        sigma: 10
+    convergence_criteria:
+        maximum_distance: 50
+        maximum_angle: 90 # deg
+    collect_benchmark_observations: False
+    benchmark_observations_save_location: data/localisation
