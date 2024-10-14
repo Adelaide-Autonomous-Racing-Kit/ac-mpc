@@ -1,4 +1,5 @@
 import io
+from functools import wraps
 import multiprocessing as mp
 import signal
 import time
@@ -7,15 +8,29 @@ from typing import Dict
 from PIL import Image
 import cv2
 from loguru import logger
+from monitor.system_monitor import SystemMonitor
 import numpy as np
 from perception.observations import ObservationDict
-from perception.segmentation import TrackSegmenter
+from perception.segmentation import TrackSegmenter, Segmentation_Monitor
 from perception.shared_memory import SharedImage, SharedPoints
 from perception.tracks import TrackLimitPerception
 from turbojpeg import TJPF_BGRX, TurboJPEG
 
 TURBO_JPEG = TurboJPEG()
+Perception_Monitor = SystemMonitor(300)
 
+
+def track_runtime(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        t1 = time.time()
+        result = function(*args, **kwargs)
+        t2 = time.time()
+        name = f"{function.__module__}.{function.__name__}"
+        Perception_Monitor.add_function_runtime(name, (t2 - t1) * 10e3)
+        return result
+
+    return wrapper
 
 class Perceiver:
     def __init__(self, cfg: Dict):
@@ -211,9 +226,16 @@ class PerceptionProcess(mp.Process):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         self._segmenter._setup_segmentation_model()
         while self.is_running:
-            mask = self._segment_drivable_area()
-            self._extract_tracklimits(mask)
+            self._perception_work()
+            Perception_Monitor.maybe_log_function_itterations_per_second()
+            Segmentation_Monitor.maybe_log_function_itterations_per_second()
 
+    @track_runtime
+    def _perception_work(self):
+        mask = self._segment_drivable_area()
+        self._extract_tracklimits(mask)
+
+    @track_runtime
     def _segment_drivable_area(self) -> np.array:
         image = self._shared_input.fresh_image
         mask, vis = self._segmenter.segment_drivable_area(image)
@@ -221,6 +243,7 @@ class PerceptionProcess(mp.Process):
         self._shared_visualisation.image = vis
         return mask
 
+    @track_runtime
     def _extract_tracklimits(self, mask: np.array):
         tracks = self._tracklimit_extractor(mask)
         self._update_centreline(tracks)

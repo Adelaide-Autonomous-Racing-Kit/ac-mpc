@@ -12,7 +12,7 @@ from localisation.localiser import Localiser
 from loguru import logger
 from mapping.map_maker import MapMaker
 import matplotlib.pyplot as plt
-from monitor.system_monitor import System_Monitor
+from monitor.system_monitor import System_Monitor, track_runtime
 import numpy as np
 from perception.observations import ObservationDict
 from perception.perception import Perceiver
@@ -145,6 +145,7 @@ class ElTuarMPC(AssettoCorsaInterface):
                 return self._finalise_mapping(observation)
         else:
             self._maybe_setup_racing()
+        System_Monitor.maybe_log_function_itterations_per_second()
         return self.select_action(observation)
 
     @property
@@ -186,6 +187,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._load_model()
         self._is_racing_setup = True
 
+    @track_runtime
     def select_action(self, obs: Dict) -> np.array:
         """
         # Outputs action given the current observation
@@ -204,7 +206,6 @@ class ElTuarMPC(AssettoCorsaInterface):
             self._update_control(obs)
         self._step(obs)
         controls = self.control_input
-        System_Monitor.log_select_action(obs["speed"])
         return controls
 
     def _step(self, obs: ObservationDict):
@@ -398,6 +399,6 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._step_count = 0
 
     def _setup_monitoring(self):
-        System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
+        # System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
         self.visualiser = DashBoardProcess(self, self.cfg)
         self.visualiser.start()
