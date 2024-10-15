@@ -1,11 +1,11 @@
 import os
 from typing import Dict
 
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 from loguru import logger
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
-from aci.utils.system_monitor import SystemMonitor, track_runtime
 
 torch.backends.cudnn.benchmark = True
 torch.set_float32_matmul_precision("medium")
