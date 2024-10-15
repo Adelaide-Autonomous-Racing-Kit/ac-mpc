@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from map_maker import MapMaker
+from acmpc.map_maker import MapMaker
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np

@@ -8,10 +8,10 @@ from aci.utils.system_monitor import SystemMonitor, track_runtime
 import cv2
 from loguru import logger
 import numpy as np
-from perception.observations import ObservationDict
-from perception.segmentation import Segmentation_Monitor, TrackSegmenter
-from perception.shared_memory import SharedImage, SharedPoints
-from perception.tracks import TrackLimitPerception
+from acmpc.perception.observations import ObservationDict
+from acmpc.perception.segmentation import Segmentation_Monitor, TrackSegmenter
+from acmpc.perception.shared_memory import SharedImage, SharedPoints
+from acmpc.perception.tracks import TrackLimitPerception
 from turbojpeg import TJPF_BGRX, TurboJPEG
 
 TURBO_JPEG = TurboJPEG()

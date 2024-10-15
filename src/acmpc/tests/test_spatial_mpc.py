@@ -1,14 +1,13 @@
 import time
 
 from ace.steering import SteeringGeometry
-from control.controller import build_mpc
-from control.utils import (
+from acmpc.control.controller import build_mpc
+from acmpc.control.utils import (
     get_chicane_track,
     get_curved_track,
     get_hairpin_track,
     get_straight_track,
 )
-from loguru import logger
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -30,7 +29,7 @@ def main():
         "r_term": [1.0e-2, 10.0],  # velocity, steering
         "final_cost": [1.0, 0.0, 0.1],  # e_y, e_psi, t
     }
-    vehicle_data = SteeringGeometry("data/audi_r8_lms_2016")
+    vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
     mpc = build_mpc(config, vehicle_data)
     N = config["horizon"]
 

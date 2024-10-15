@@ -6,20 +6,20 @@ from typing import Dict, Tuple
 from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
 from aci.utils.system_monitor import SystemMonitor, track_runtime
-from control.controller import Controller
-from control.pid import BrakePID, SteeringPID, ThrottlePID
-from dashboard.dashboard import DashBoardProcess
-from localisation.localiser import Localiser
+from acmpc.control.controller import Controller
+from acmpc.control.pid import BrakePID, SteeringPID, ThrottlePID
+from acmpc.dashboard.dashboard import DashBoardProcess
+from acmpc.localisation.localiser import Localiser
 from loguru import logger
-from mapping.map_maker import MapMaker
+from acmpc.mapping.map_maker import MapMaker
 import matplotlib.pyplot as plt
 import numpy as np
-from perception.observations import ObservationDict
-from perception.perception import Perceiver
+from acmpc.perception.observations import ObservationDict
+from acmpc.perception.perception import Perceiver
 from scipy.signal import savgol_filter
-from state.shared_memory import SharedPose, SharedSessionDetails
+from acmpc.state.shared_memory import SharedPose, SharedSessionDetails
 import torch
-from utils import load
+from acmpc.utils import load
 
 MINIMUM_PROGRESS_M = 50
 MINIMUM_PROGRESS = 0.0005
@@ -27,7 +27,7 @@ MINIMUM_FUEL_L = 0.01
 REFERENCE_SPEED_WINDOW_AHEAD = 75
 REFERENCE_SPEED_WINDOW_BEHIND = 25
 
-Agent_Monitor = SystemMonitor(5000)
+Agent_Monitor = SystemMonitor(10000)
 
 
 class ElTuarMPC(AssettoCorsaInterface):

@@ -8,7 +8,7 @@ from typing import Dict
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtQuick import QQuickWindow
 from PyQt6.QtWidgets import QApplication
-from dashboard.backend.feeds import (
+from acmpc.dashboard.backend.feeds import (
     CameraFeed,
     ControlFeed,
     LocalisationFeed,
@@ -18,7 +18,7 @@ from dashboard.backend.feeds import (
     VideoThread,
     VisualisationProvider,
 )
-from dashboard.backend.session_information import SessionInformationProvider
+from acmpc.dashboard.backend.session_information import SessionInformationProvider
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
