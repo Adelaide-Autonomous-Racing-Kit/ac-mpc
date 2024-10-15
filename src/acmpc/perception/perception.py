@@ -1,17 +1,15 @@
 import io
-from functools import wraps
 import multiprocessing as mp
 import signal
-import time
 from typing import Dict
 
 from PIL import Image
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 import cv2
 from loguru import logger
-from aci.utils.system_monitor import SystemMonitor, track_runtime
 import numpy as np
 from perception.observations import ObservationDict
-from perception.segmentation import TrackSegmenter, Segmentation_Monitor
+from perception.segmentation import Segmentation_Monitor, TrackSegmenter
 from perception.shared_memory import SharedImage, SharedPoints
 from perception.tracks import TrackLimitPerception
 from turbojpeg import TJPF_BGRX, TurboJPEG

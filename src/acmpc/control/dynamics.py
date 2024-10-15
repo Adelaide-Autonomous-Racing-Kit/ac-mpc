@@ -80,7 +80,9 @@ class SpatialBicycleModel:
         A = np.zeros((n, 3, 3))
         a_1 = np.vstack([ones_col, delta_s, zeros_col]).T
         a_2 = np.vstack([-(kappa_ref**2) * delta_s, ones_col, zeros_col]).T
-        a_3 = np.vstack([-kappa_ref / (v_ref * delta_s + self._eps), zeros_col, ones_col]).T
+        a_3 = np.vstack(
+            [-kappa_ref / (v_ref * delta_s + self._eps), zeros_col, ones_col]
+        ).T
         A[:, 0, :] = a_1
         A[:, 1, :] = a_2
         A[:, 2, :] = a_3

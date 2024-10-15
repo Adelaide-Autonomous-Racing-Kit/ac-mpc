@@ -5,6 +5,7 @@ from typing import Dict, Tuple
 
 from ace.steering import SteeringGeometry
 from aci.interface import AssettoCorsaInterface
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 from control.controller import Controller
 from control.pid import BrakePID, SteeringPID, ThrottlePID
 from dashboard.dashboard import DashBoardProcess
@@ -12,7 +13,6 @@ from localisation.localiser import Localiser
 from loguru import logger
 from mapping.map_maker import MapMaker
 import matplotlib.pyplot as plt
-from aci.utils.system_monitor import SystemMonitor, track_runtime
 import numpy as np
 from perception.observations import ObservationDict
 from perception.perception import Perceiver

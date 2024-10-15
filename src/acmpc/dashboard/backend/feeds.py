@@ -16,10 +16,9 @@ from dashboard.visualisation.plots import (
     get_blank_canvas,
 )
 from dashboard.visualisation.utils import COLOUR_LIST, draw_arrow, draw_track_line
+from loguru import logger
 import numpy as np
 from utils import load
-
-from loguru import logger
 
 
 class FeedThread(QThread):
