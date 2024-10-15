@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import cv2
 from acmpc.dashboard.visualisation import utils
+import cv2
 import numpy as np
 
 N_POINTS = 400

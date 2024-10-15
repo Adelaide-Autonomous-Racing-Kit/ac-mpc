@@ -8,7 +8,6 @@ from typing import Dict
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
-import cv2
 from acmpc.dashboard.backend.utils import flip, flip_and_rotate
 from acmpc.dashboard.visualisation.plots import (
     draw_control_map,
@@ -16,8 +15,9 @@ from acmpc.dashboard.visualisation.plots import (
     get_blank_canvas,
 )
 from acmpc.dashboard.visualisation.utils import COLOUR_LIST, draw_arrow, draw_track_line
-import numpy as np
 from acmpc.utils import load
+import cv2
+import numpy as np
 
 
 class FeedThread(QThread):

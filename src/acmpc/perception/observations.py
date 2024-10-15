@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-import numpy as np
 from acmpc.utils.radians import convert_radians_to_plus_minus_pi
+import numpy as np
 
 
 class ObservationDict(dict):

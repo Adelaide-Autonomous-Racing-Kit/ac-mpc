@@ -10,8 +10,8 @@ from aci.utils.system_monitor import SystemMonitor, track_runtime
 from acmpc.control.commands import TemporalCommandSelector
 from acmpc.control.dynamics import SpatialBicycleModel
 from acmpc.control.spatial_mpc import SpatialMPC
-import numpy as np
 from acmpc.perception.shared_memory import SharedPoints
+import numpy as np
 
 Control_Monitor = SystemMonitor(300)
 

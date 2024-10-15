@@ -7,12 +7,12 @@ from typing import Dict, List, Tuple
 
 from ace.steering import SteeringGeometry
 from aci.utils.system_monitor import SystemMonitor, track_runtime
-from loguru import logger
-import numpy as np
 from acmpc.perception.shared_memory import SharedPoints
 from acmpc.utils import load
 from acmpc.utils.fast_distributions import FastNormalDistribution
 from acmpc.utils.kdtree import KDTree
+from loguru import logger
+import numpy as np
 
 Localisation_Monitor = SystemMonitor(300)
 
