@@ -8,7 +8,7 @@ from typing import Dict
 from PIL import Image
 import cv2
 from loguru import logger
-from monitor.system_monitor import SystemMonitor
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 import numpy as np
 from perception.observations import ObservationDict
 from perception.segmentation import TrackSegmenter, Segmentation_Monitor
@@ -19,18 +19,6 @@ from turbojpeg import TJPF_BGRX, TurboJPEG
 TURBO_JPEG = TurboJPEG()
 Perception_Monitor = SystemMonitor(300)
 
-
-def track_runtime(function):
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-        t1 = time.time()
-        result = function(*args, **kwargs)
-        t2 = time.time()
-        name = f"{function.__module__}.{function.__name__}"
-        Perception_Monitor.add_function_runtime(name, (t2 - t1) * 10e3)
-        return result
-
-    return wrapper
 
 class Perceiver:
     def __init__(self, cfg: Dict):
@@ -227,23 +215,31 @@ class PerceptionProcess(mp.Process):
         self._segmenter._setup_segmentation_model()
         while self.is_running:
             self._perception_work()
-            Perception_Monitor.maybe_log_function_itterations_per_second()
-            Segmentation_Monitor.maybe_log_function_itterations_per_second()
+            # Perception_Monitor.maybe_log_function_itterations_per_second()
+            # Segmentation_Monitor.maybe_log_function_itterations_per_second()
 
-    @track_runtime
+    @track_runtime(Perception_Monitor)
     def _perception_work(self):
-        mask = self._segment_drivable_area()
+        frame = self._get_new_frame()
+        mask = self._segment_drivable_area(frame)
         self._extract_tracklimits(mask)
 
-    @track_runtime
-    def _segment_drivable_area(self) -> np.array:
-        image = self._shared_input.fresh_image
-        mask, vis = self._segmenter.segment_drivable_area(image)
-        self._shared_mask.image = mask
-        self._shared_visualisation.image = vis
+    @track_runtime(Perception_Monitor)
+    def _get_new_frame(self) -> np.array:
+        return self._shared_input.fresh_image
+
+    @track_runtime(Perception_Monitor)
+    def _segment_drivable_area(self, frame: np.array) -> np.array:
+        mask, vis = self._segmenter.segment_drivable_area(frame)
+        self._update_shared_images(mask, vis)
         return mask
 
-    @track_runtime
+    @track_runtime(Perception_Monitor)
+    def _update_shared_images(self, mask: np.array, vis: np.array):
+        self._shared_mask.image = mask
+        self._shared_visualisation.image = vis
+
+    @track_runtime(Perception_Monitor)
     def _extract_tracklimits(self, mask: np.array):
         tracks = self._tracklimit_extractor(mask)
         self._update_centreline(tracks)

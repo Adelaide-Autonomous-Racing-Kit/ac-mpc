@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 
 import cv2
 from loguru import logger
-from monitor.system_monitor import track_runtime
 import numpy as np
 from perception.utils import CameraInfo, smooth_track_with_polyfit
 from scipy.signal import savgol_filter
@@ -39,7 +38,6 @@ class TrackLimitPerception:
             2: self._split_contour_with_gaps,
         }
 
-    @track_runtime
     def __call__(self, mask: np.array) -> np.array:
         tracklimits = self._extract_tracklimits(mask)
         return self._process_track_points(tracklimits)

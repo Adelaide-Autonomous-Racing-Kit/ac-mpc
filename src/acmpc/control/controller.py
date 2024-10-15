@@ -11,7 +11,10 @@ from control.dynamics import SpatialBicycleModel
 from control.spatial_mpc import SpatialMPC
 import numpy as np
 from perception.shared_memory import SharedPoints
-from monitor.system_monitor import System_Monitor, track_runtime
+from aci.utils.system_monitor import SystemMonitor, track_runtime
+
+Control_Monitor = SystemMonitor(300)
+
 
 def build_mpc(control_config: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:
     velocity_limits = {
@@ -223,9 +226,9 @@ class ControlProcess(mp.Process):
         while self.is_running:
             if not self._perceiver.is_centreline_stale:
                 self._update_control()
-            # System_Monitor.maybe_log_function_itterations_per_second()
+            # Control_Monitor.maybe_log_function_itterations_per_second()
 
-    @track_runtime
+    @track_runtime(Control_Monitor)
     def _update_control(self):
         self._update_reference_speed()
         self.model_predictive_controller.get_control(

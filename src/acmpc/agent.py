@@ -12,7 +12,7 @@ from localisation.localiser import Localiser
 from loguru import logger
 from mapping.map_maker import MapMaker
 import matplotlib.pyplot as plt
-from monitor.system_monitor import System_Monitor, track_runtime
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 import numpy as np
 from perception.observations import ObservationDict
 from perception.perception import Perceiver
@@ -21,12 +21,13 @@ from state.shared_memory import SharedPose, SharedSessionDetails
 import torch
 from utils import load
 
-torch.backends.cudnn.benchmark = True
 MINIMUM_PROGRESS_M = 50
 MINIMUM_PROGRESS = 0.0005
 MINIMUM_FUEL_L = 0.01
 REFERENCE_SPEED_WINDOW_AHEAD = 75
 REFERENCE_SPEED_WINDOW_BEHIND = 25
+
+Agent_Monitor = SystemMonitor(5000)
 
 
 class ElTuarMPC(AssettoCorsaInterface):
@@ -145,7 +146,7 @@ class ElTuarMPC(AssettoCorsaInterface):
                 return self._finalise_mapping(observation)
         else:
             self._maybe_setup_racing()
-        System_Monitor.maybe_log_function_itterations_per_second()
+        Agent_Monitor.maybe_log_function_itterations_per_second()
         return self.select_action(observation)
 
     @property
@@ -187,7 +188,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._load_model()
         self._is_racing_setup = True
 
-    @track_runtime
+    @track_runtime(Agent_Monitor)
     def select_action(self, obs: Dict) -> np.array:
         """
         # Outputs action given the current observation
@@ -197,6 +198,7 @@ class ElTuarMPC(AssettoCorsaInterface):
             t is the normalised throttle and b is normalised brake.
         """
         obs = ObservationDict(obs)
+
         if self.thread_exception is not None:
             logger.warning(f"Thread Exception Thrown: {self.thread_exception}")
 
@@ -402,3 +404,4 @@ class ElTuarMPC(AssettoCorsaInterface):
         # System_Monitor.verbosity = self.cfg["debugging"]["verbose"]
         self.visualiser = DashBoardProcess(self, self.cfg)
         self.visualiser.start()
+        self._last_image_timestamp = time.time()
