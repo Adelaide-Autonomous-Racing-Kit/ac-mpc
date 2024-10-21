@@ -1,9 +1,9 @@
 import argparse
 
-from localisation.benchmarking.benchmark_localisation import BenchmarkLocalisation
+from acmpc.localisation.benchmarking.benchmark_localisation import BenchmarkLocalisation
+from acmpc.utils import load
 from loguru import logger
 import numpy as np
-from utils import load
 
 
 def main():

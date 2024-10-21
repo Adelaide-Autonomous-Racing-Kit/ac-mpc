@@ -8,18 +8,16 @@ from typing import Dict
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QImage
 from PyQt6.QtQuick import QQuickImageProvider
-import cv2
-from dashboard.backend.utils import flip, flip_and_rotate
-from dashboard.visualisation.plots import (
+from acmpc.dashboard.backend.utils import flip, flip_and_rotate
+from acmpc.dashboard.visualisation.plots import (
     draw_control_map,
     draw_localisation_map,
     get_blank_canvas,
 )
-from dashboard.visualisation.utils import COLOUR_LIST, draw_arrow, draw_track_line
+from acmpc.dashboard.visualisation.utils import COLOUR_LIST, draw_arrow, draw_track_line
+from acmpc.utils import load
+import cv2
 import numpy as np
-from utils import load
-
-from loguru import logger
 
 
 class FeedThread(QThread):

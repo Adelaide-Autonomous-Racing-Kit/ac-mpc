@@ -1,6 +1,6 @@
 import argparse
 
-from agent import ElTuarMPC
+from acmpc.agent import ElTuarMPC
 
 
 def main():

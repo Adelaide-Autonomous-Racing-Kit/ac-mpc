@@ -1,9 +1,9 @@
 import copy
 
+from acmpc.perception.utils import CameraInfo
 import cv2
 from loguru import logger
 import numpy as np
-from utils import CameraInfo
 
 CAMERA_CONFIG = {
     "image_width": 1080,

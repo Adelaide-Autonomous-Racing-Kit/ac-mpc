@@ -4,8 +4,8 @@ import copy
 import math
 from typing import Dict
 
-from control.paths import ReferencePath
-from control.solvers import (
+from acmpc.control.paths import ReferencePath
+from acmpc.control.solvers import (
     ControlSolver,
     LocalisedSpeedProfileSolver,
     SpeedProfileSolver,

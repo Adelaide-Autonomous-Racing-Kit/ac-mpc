@@ -6,12 +6,15 @@ import time
 from typing import Dict, List, Tuple
 
 from ace.steering import SteeringGeometry
+from aci.utils.system_monitor import SystemMonitor, track_runtime
+from acmpc.perception.shared_memory import SharedPoints
+from acmpc.utils import load
+from acmpc.utils.fast_distributions import FastNormalDistribution
+from acmpc.utils.kdtree import KDTree
 from loguru import logger
 import numpy as np
-from perception.shared_memory import SharedPoints
-from utils import load
-from utils.fast_distributions import FastNormalDistribution
-from utils.kdtree import KDTree
+
+Localisation_Monitor = SystemMonitor(300)
 
 
 class Localiser:
@@ -221,10 +224,12 @@ class LocalisationProcess(mp.Process):
                 self._cache_observation(self._perceiver.visualisation_tracks)
             self._score_particles(self._perceiver.tracklimits)
         self._maybe_save_observations()
+        # Localisation_Monitor.maybe_log_function_itterations_per_second()
 
     def _cache_observation(self, observation: Dict):
         self._tracklimit_observation = observation
 
+    @track_runtime(Localisation_Monitor)
     def _score_particles(self, observation: Dict):
         observation = self._downsample_observations(observation)
         particles = self._update_particles(observation)

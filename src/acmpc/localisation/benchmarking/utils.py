@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from utils import load
+from acmpc.utils import load
 
 
 class LocalisationRecording:

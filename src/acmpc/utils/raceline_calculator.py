@@ -1,6 +1,4 @@
 import copy
-import json
-import os.path
 
 import matplotlib.pyplot as plt
 import numpy as np

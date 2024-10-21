@@ -1,10 +1,17 @@
 import os
 from typing import Dict
 
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 from loguru import logger
 import numpy as np
 import segmentation_models_pytorch as smp
 import torch
+
+torch.backends.cudnn.benchmark = True
+torch.set_float32_matmul_precision("medium")
+
+
+Segmentation_Monitor = SystemMonitor(300)
 
 
 class TrackSegmenter:
@@ -54,14 +61,23 @@ class TrackSegmenter:
         self.model = model
 
     def _image_to_tensor(self, image: np.array) -> torch.Tensor:
-        x = np.stack([image]) / 255
-        x = torch.as_tensor(x, dtype=torch.float32, device=self.device)
+        x = torch.as_tensor(image, dtype=torch.float32, device=self.device)
+        x = x.unsqueeze(0) / 255.0
         return x.permute(0, 3, 1, 2)
 
-    def segment_drivable_area(self, x: np.array):
+    @track_runtime(Segmentation_Monitor)
+    def segment_drivable_area(self, x: np.array) -> np.array:
         x = self._image_to_tensor(x)
-        output = self.model.predict(x)
-        output = torch.argmax(output, dim=1).cpu().numpy().astype(np.uint8)
+        output = self._do_inference(x)
+        return self._post_process(output)
+
+    def _do_inference(self, x: torch.tensor) -> torch.tensor:
+        with torch.inference_mode():
+            output = self.model.predict(x)
+        return output
+
+    def _post_process(self, x: torch.Tensor) -> np.array:
+        output = torch.argmax(x, dim=1).cpu().numpy().astype(np.uint8)
         vis = np.copy(output)
         output[output > 1] = 0
         return np.squeeze(output), vis

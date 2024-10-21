@@ -1,7 +1,7 @@
 from threading import local
 from typing import Dict
 
-from localisation.benchmarking.test_localiser import TestLocaliser
+from acmpc.localisation.benchmarking.test_localiser import TestLocaliser
 from loguru import logger
 import numpy as np
 

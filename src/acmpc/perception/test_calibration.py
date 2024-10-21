@@ -1,8 +1,8 @@
 import copy
 import unittest
 
+from acmpc.perception.utils import CameraInfo
 import numpy as np
-from utils import CameraInfo
 
 
 class TestCamera(unittest.TestCase):
