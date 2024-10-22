@@ -466,7 +466,7 @@ class LocalisationProcess(mp.Process):
     def _reset_filter(self):
         particle_start_point_idx = np.linspace(
             0, len(self.centre_track) - 3, self._max_n_particles
-        ).astype(np.int16)
+        ).astype(np.int32)
         x1 = self.centre_track[particle_start_point_idx, 0]
         y1 = self.centre_track[particle_start_point_idx, 1]
         x2 = self.centre_track[particle_start_point_idx + 1, 0]
