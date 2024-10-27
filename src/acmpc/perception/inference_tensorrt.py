@@ -1,8 +1,9 @@
+from collections import namedtuple
+
+from loguru import logger
 import numpy as np
 import pycuda.driver as cuda
 import tensorrt as trt
-from collections import namedtuple
-from loguru import logger
 
 
 class TensorNotFound(Exception):
