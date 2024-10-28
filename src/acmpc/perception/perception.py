@@ -6,7 +6,11 @@ from typing import Dict
 from PIL import Image
 from aci.utils.system_monitor import SystemMonitor, track_runtime
 from acmpc.perception.observations import ObservationDict
-from acmpc.perception.segmentation import Segmentation_Monitor, TrackSegmenter
+from acmpc.perception.segmentation import (
+    Segmentation_Monitor,
+    TrackSegmenter,
+    TrackSegmenterTensorRT,
+)
 from acmpc.perception.shared_memory import SharedImage, SharedPoints
 from acmpc.perception.tracks import TrackLimitPerception
 import cv2
@@ -213,8 +217,8 @@ class PerceptionProcess(mp.Process):
         self._segmenter._setup_segmentation_model()
         while self.is_running:
             self._perception_work()
-            # Perception_Monitor.maybe_log_function_itterations_per_second()
-            # Segmentation_Monitor.maybe_log_function_itterations_per_second()
+            Perception_Monitor.maybe_log_function_itterations_per_second()
+            Segmentation_Monitor.maybe_log_function_itterations_per_second()
 
     @track_runtime(Perception_Monitor)
     def _perception_work(self):
@@ -267,6 +271,7 @@ class PerceptionProcess(mp.Process):
 
     def __setup_segmenter(self, cfg: Dict):
         self._segmenter = TrackSegmenter(cfg)
+        # self._segmenter = TrackSegmenterTensorRT(cfg)
 
     def __setup_track_extractor(self, cfg: Dict):
         self._tracklimit_extractor = TrackLimitPerception(cfg)

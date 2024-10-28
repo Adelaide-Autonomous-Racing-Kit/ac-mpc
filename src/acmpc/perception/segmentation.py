@@ -7,11 +7,19 @@ import numpy as np
 import segmentation_models_pytorch as smp
 import torch
 
+from .inference_tensorrt import TensorRTInference
+
 torch.backends.cudnn.benchmark = True
 torch.set_float32_matmul_precision("medium")
 
 
 Segmentation_Monitor = SystemMonitor(300)
+
+PRECISION = {
+    "full": torch.float32,
+    "fp16": torch.float16,
+    "bf16": torch.bfloat16,
+}
 
 
 class TrackSegmenter:
@@ -23,6 +31,7 @@ class TrackSegmenter:
         self._width = cfg["image_width"]
         self._height = cfg["image_height"]
         self._compile_model = cfg["compile_model"]
+        self._precision = PRECISION[cfg["precision"]]
 
     def _setup_device(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,7 +55,7 @@ class TrackSegmenter:
         model = smp.FPN(encoder_name="resnet18", encoder_weights=None, classes=10)
         model.load_state_dict(torch.load(self._model_weights_path, weights_only=True))
         model.eval()
-        model.to(self.device)
+        model.to(self.device, dtype=self._precision)
         if self._compile_model:
             logger.info("Compiling segmentation model with torch.compile...")
             model = torch.compile(model, mode="reduce-overhead")
@@ -60,10 +69,11 @@ class TrackSegmenter:
             model(dummy_input)
         self.model = model
 
+    @track_runtime(Segmentation_Monitor)
     def _image_to_tensor(self, image: np.array) -> torch.Tensor:
-        x = torch.as_tensor(image, dtype=torch.float32, device=self.device)
-        x = x.unsqueeze(0) / 255.0
-        return x.permute(0, 3, 1, 2)
+        x = torch.as_tensor(image, device=self.device).to(dtype=self._precision)
+        x /= 255.0
+        return x.permute(2, 0, 1).unsqueeze(0)
 
     @track_runtime(Segmentation_Monitor)
     def segment_drivable_area(self, x: np.array) -> np.array:
@@ -71,13 +81,42 @@ class TrackSegmenter:
         output = self._do_inference(x)
         return self._post_process(output)
 
+    @track_runtime(Segmentation_Monitor)
     def _do_inference(self, x: torch.tensor) -> torch.tensor:
         with torch.inference_mode():
             output = self.model.predict(x)
         return output
 
+    @track_runtime(Segmentation_Monitor)
     def _post_process(self, x: torch.Tensor) -> np.array:
-        output = torch.argmax(x, dim=1).cpu().numpy().astype(np.uint8)
+        output = torch.argmax(x, dim=1).to(torch.uint8).cpu().numpy()
+        vis = np.copy(output)
+        output[output > 1] = 0
+        return np.squeeze(output), vis
+
+
+class TrackSegmenterTensorRT(TrackSegmenter):
+    def _setup_segmentation_model(self):
+        self._model = TensorRTInference(self._model_weights_path)
+
+    @track_runtime(Segmentation_Monitor)
+    def segment_drivable_area(self, image: np.array) -> np.array:
+        x = self._preprocess(image)
+        output = self._infer(x)
+        return self._post_process(output)
+
+    @track_runtime(Segmentation_Monitor)
+    def _infer(self, x: np.array) -> np.array:
+        return self._model.infer(x)
+
+    @track_runtime(Segmentation_Monitor)
+    def _preprocess(self, image: np.array):
+        x = np.expand_dims(image, 0).astype(np.float16) / 255.0
+        return np.transpose(x, (0, 3, 1, 2))
+
+    @track_runtime(Segmentation_Monitor)
+    def _post_process(self, x: torch.Tensor) -> np.array:
+        output = np.argmax(x, axis=1).astype(np.uint8)
         vis = np.copy(output)
         output[output > 1] = 0
         return np.squeeze(output), vis
