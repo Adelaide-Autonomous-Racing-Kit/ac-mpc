@@ -69,7 +69,6 @@ class TrackSegmenter:
             model(dummy_input)
         self.model = model
 
-    @track_runtime(Segmentation_Monitor)
     def _image_to_tensor(self, image: np.array) -> torch.Tensor:
         x = torch.as_tensor(image, device=self.device).to(dtype=self._precision)
         x /= 255.0
@@ -81,18 +80,16 @@ class TrackSegmenter:
         output = self._do_inference(x)
         return self._post_process(output)
 
-    @track_runtime(Segmentation_Monitor)
     def _do_inference(self, x: torch.tensor) -> torch.tensor:
         with torch.inference_mode():
             output = self.model.predict(x)
         return output
 
-    @track_runtime(Segmentation_Monitor)
     def _post_process(self, x: torch.Tensor) -> np.array:
         output = torch.argmax(x, dim=1).to(torch.uint8).cpu().numpy()
         vis = np.copy(output)
         output[output > 1] = 0
-        return np.squeeze(output), vis
+        return output, vis
 
 
 class TrackSegmenterTensorRT(TrackSegmenter):

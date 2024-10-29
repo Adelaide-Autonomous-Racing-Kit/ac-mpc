@@ -1,6 +1,7 @@
 from collections import namedtuple
 from typing import Dict, List, Tuple
 
+from aci.utils.system_monitor import SystemMonitor, track_runtime
 from acmpc.perception.utils import CameraInfo, smooth_track_with_polyfit
 from acmpc.utils.track_limit_interpolation import maybe_interpolate_track_limit
 import cv2
@@ -16,6 +17,8 @@ WINDOW_SIZE = 30
 NO_GAP_CONTOUR_Y_VALUE_INTERVAL = 25
 CUT_SIZE = 2
 MINIMUM_GAP_DISTANCE = 10
+
+Track_Limits_Monitor = SystemMonitor(300)
 
 
 class TrackLimitPerception:
@@ -165,34 +168,14 @@ class TrackLimitPerception:
         return self._remove_duplicate_y(left_track, is_right=False)
 
     def _remove_duplicate_y(self, track: np.array, is_right: bool = True):
-        values, counts = np.unique(track[:, 1], return_counts=True)
-        duplicated_y_values = values[counts > 1]
-        is_point_with_duplicated_y = np.isin(track[:, 1], duplicated_y_values)
-        duplicated_y_points = track[is_point_with_duplicated_y]
-        valid_points = [
-            self._get_valid_point(y, duplicated_y_points, is_right)
-            for y in duplicated_y_values
-        ]
-        if len(valid_points) > 1:
-            valid_points = np.array(valid_points)
-            is_valid_duplicate = (track == valid_points[:, None]).all(2).any(0)
+        _, indices = np.unique(track[:, 1], return_index=True)
+        indices = np.sort(indices)
+        res = np.split(track, indices)[1:]
+        if is_right:
+            track = [x[np.argmax(x[:, 0])] if len(x) > 1 else x[0] for x in res]
         else:
-            is_valid_duplicate = np.zeros_like(is_point_with_duplicated_y)
-        is_unique = np.logical_not(is_point_with_duplicated_y)
-        return track[is_valid_duplicate | is_unique]
-
-    def _get_valid_point(
-        self,
-        duplicated_y: int,
-        duplicated_y_points: np.array,
-        is_right: bool,
-    ) -> List[np.array]:
-        duplicated_points = duplicated_y_points[
-            duplicated_y_points[:, 1] == duplicated_y
-        ]
-        x_values = duplicated_points[:, 0]
-        x_index = np.argmax(x_values) if is_right else np.argmin(x_values)
-        return duplicated_points[x_index]
+            track = [x[np.argmin(x[:, 0])] if len(x) > 1 else x[0] for x in res]
+        return np.stack(track)
 
     def _fallback_extract_tracklimits(self, mask: np.array) -> Dict:
         ascending_array = np.arange(1, mask.shape[1] + 1, dtype=np.uint16)
@@ -210,6 +193,7 @@ class TrackLimitPerception:
         }
         return tracks
 
+    @track_runtime(Track_Limits_Monitor)
     def _get_image_points(self, columns: np.array) -> np.array:
         # remove track limit idxs that touch side of image or include
         # the bonnet of vehicle
@@ -268,6 +252,7 @@ class TrackLimitPerception:
         return self._smooth_track_with_polyfit(centre_track)
 
 
+@track_runtime(Track_Limits_Monitor)
 def contour_bbox_area(contour: np.array) -> float:
     if contour.shape[0] == 0:
         return 0.0
