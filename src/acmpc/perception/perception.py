@@ -11,7 +11,7 @@ from acmpc.perception.segmentation import (
     TrackSegmenterTensorRT,
 )
 from acmpc.perception.shared_memory import SharedImage, SharedPoints
-from acmpc.perception.tracks import TrackLimitPerception, Track_Limits_Monitor
+from acmpc.perception.tracks import Track_Limits_Monitor, TrackLimitPerception
 from acmpc.worker.base import WorkerProcess
 import cv2
 from loguru import logger
