@@ -89,7 +89,7 @@ class TrackSegmenter:
         output = torch.argmax(x, dim=1).to(torch.uint8).cpu().numpy()
         vis = np.copy(output)
         output[output > 1] = 0
-        return np.squeeze(output), vis
+        return output, vis
 
 
 class TrackSegmenterTensorRT(TrackSegmenter):

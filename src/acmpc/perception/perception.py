@@ -3,7 +3,7 @@ import multiprocessing as mp
 from typing import Dict
 
 from PIL import Image
-from aci.utils.system_monitor import SystemMonitor, track_runtime
+from aci.utils.system_monitor import track_runtime
 from acmpc.perception.observations import ObservationDict
 from acmpc.perception.segmentation import (
     Segmentation_Monitor,
@@ -11,7 +11,7 @@ from acmpc.perception.segmentation import (
     TrackSegmenterTensorRT,
 )
 from acmpc.perception.shared_memory import SharedImage, SharedPoints
-from acmpc.perception.tracks import TrackLimitPerception
+from acmpc.perception.tracks import TrackLimitPerception, Track_Limits_Monitor
 from acmpc.worker.base import WorkerProcess
 import cv2
 from loguru import logger
@@ -19,7 +19,6 @@ import numpy as np
 from turbojpeg import TJPF_BGRX, TurboJPEG
 
 TURBO_JPEG = TurboJPEG()
-Track_Limits_Monitor = SystemMonitor(300)
 
 
 class Perceiver:
