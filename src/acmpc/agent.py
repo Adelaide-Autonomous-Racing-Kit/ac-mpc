@@ -40,7 +40,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         """
         Terminates the run if an agent does not make any progress around the track
         """
-        is_not_progressing = not self._is_progressing_distance(observation)
+        is_not_progressing = not self._is_progressing(observation)
         is_out_of_fuel = self._is_out_of_fuel(observation)
         if is_not_progressing:
             logger.warning("Agent is not making progress")
@@ -146,7 +146,7 @@ class ElTuarMPC(AssettoCorsaInterface):
                 return self._finalise_mapping(observation)
         else:
             self._maybe_setup_racing()
-        Agent_Monitor.maybe_log_function_itterations_per_second()
+        # Agent_Monitor.maybe_log_function_itterations_per_second()
         return self.select_action(observation)
 
     @property
@@ -323,7 +323,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.localiser:
             self.localiser.shutdown()
         self._maybe_record_localisation_data()
-        self.visualiser.terminate()
+        self.visualiser.shutdown()
 
     def _maybe_record_localisation_data(self):
         if self.localiser and self._is_collecting_localisation_data:
@@ -364,6 +364,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self._is_racing_setup = False
         self.last_update_time = time.time()
         self._previous_distance = None
+        self._previous_position = None
 
     def _setup_threading(self):
         self.executor = ThreadPoolExecutor(max_workers=8)

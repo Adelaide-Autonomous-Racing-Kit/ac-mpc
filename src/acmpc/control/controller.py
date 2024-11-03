@@ -78,6 +78,7 @@ class Controller:
 
     def shutdown(self):
         self._controller.is_running = False
+        self._controller.join()
 
     def __setup(self, cfg: Dict, perceiver: Perceiver):
         self._unpack_config(cfg)
@@ -93,6 +94,7 @@ class Controller:
 class ControlProcess(mp.Process):
     def __init__(self, cfg: Dict, perceiver: Perceiver):
         super().__init__()
+        self.daemon = True
         self._perceiver = perceiver
         self.__setup(cfg)
         self._command_selector = TemporalCommandSelector(self)

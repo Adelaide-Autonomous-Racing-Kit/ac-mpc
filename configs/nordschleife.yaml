@@ -8,13 +8,12 @@ debugging:
     birds_eye_view_size: 200
     verbose: True
     speed_profile_path: data/speed_profiles
-is_streaming: False
+is_streaming: True
 data_collection:
     collect_images: 0
 perception:
-    model_segmentation: True
     model_path: data/models/segmentation/nordschleife-fpn-resnet-18-v1.pt
-    single_cam: True
+    precision: "fp16"
     compile_model: False
     image_width: 1280
     image_height: 736
@@ -67,7 +66,7 @@ localisation:
         maximum_angle: 90 # deg
 racing:
     control:
-        horizon: 100
+        horizon: 50
         unlocalised_max_speed: 20
         speed_profile_constraints:
             v_min: 12.0

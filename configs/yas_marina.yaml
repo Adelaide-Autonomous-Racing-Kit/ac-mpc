@@ -8,13 +8,12 @@ debugging:
     birds_eye_view_size: 200
     verbose: True
     speed_profile_path: data/speed_profiles
-is_streaming: False
+is_streaming: True
 data_collection:
     collect_images: 0
 perception:
-    model_segmentation: True
     model_path: data/models/segmentation/yas_marina-fpn-resnet-18-v1.pt
-    single_cam: True
+    precision: "fp16"
     compile_model: False
     image_width: 1280
     image_height: 736
@@ -56,7 +55,7 @@ localisation:
         yaw:  2.0 # degrees
     thresholds:
         offset: 10
-        rotation: 90 # deg
+        rotation: 180 # deg
         minimum_particles: 20
         track_limit: 20.0
     score_distribution:
@@ -64,20 +63,20 @@ localisation:
         sigma: 10
     convergence_criteria:
         maximum_distance: 50
-        maximum_angle: 90 # deg
+        maximum_angle: 180 # deg
 racing:
     control:
-        horizon: 100
+        horizon: 50
         unlocalised_max_speed: 20
         speed_profile_constraints:
-            v_min: 12.0
+            v_min: 8.0
             v_max: 84.0
             a_min: -1.0
             a_max: 1.0
             ay_max: 3.0
             ki_min: 0.0
             end_velocity: 14.0
-        step_cost: [2.0e-4, 0.0e-2, 0.0] # e_y, e_psi, t
+        step_cost: [2.0e-3, 2.0e-2, 0.0] # e_y, e_psi, t
         r_term: [1.0e-2, 10.0] # velocity, steering
         final_cost: [1.0, 0.0, 0.1] # e_y, e_psi, t
     map_speed_profile_constraints:

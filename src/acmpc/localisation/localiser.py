@@ -38,6 +38,7 @@ class Localiser:
 
     def shutdown(self):
         self._localiser.is_running = False
+        self._localiser.join()
 
     def step(self, control_input: Tuple[float]):
         """
@@ -131,6 +132,7 @@ class Localiser:
 class LocalisationProcess(mp.Process):
     def __init__(self, cfg: Dict, perceiver: PerceptionProcess):
         super().__init__()
+        self.daemon = True
         self._perceiver = perceiver
         self._setup(cfg)
 
