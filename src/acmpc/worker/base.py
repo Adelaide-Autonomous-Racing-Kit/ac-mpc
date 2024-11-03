@@ -7,6 +7,7 @@ from typing import Dict
 class WorkerProcess(mp.Process):
     def __init__(self, cfg: Dict):
         super().__init__()
+        self.daemon = True
         self.__setup(cfg)
 
     @property

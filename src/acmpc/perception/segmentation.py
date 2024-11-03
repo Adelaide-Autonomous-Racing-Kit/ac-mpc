@@ -7,8 +7,6 @@ import numpy as np
 import segmentation_models_pytorch as smp
 import torch
 
-from .inference_tensorrt import TensorRTInference
-
 torch.backends.cudnn.benchmark = True
 torch.set_float32_matmul_precision("medium")
 

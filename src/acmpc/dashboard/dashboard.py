@@ -51,15 +51,17 @@ class TestDashboardProcess(mp.Process):
 
     def run(self):
         QQuickWindow.setSceneGraphBackend("software")
-        app = QApplication(sys.argv)
+        self._app = QApplication(sys.argv)
 
         engine = QQmlApplicationEngine()
-        engine.quit.connect(app.quit)
+        engine.quit.connect(self._app.quit)
         self._setup_providers(engine)
         engine.load(self._ui_path)
+        self._exit_status = self._app.exec()
 
-        exit_status = app.exec()
-        sys.exit(exit_status)
+    def shutdown(self):
+        self.terminate()
+        self.join()
 
     def _setup_providers(self, engine: QQmlApplicationEngine):
         self._setup_visualisation_providers(engine)
@@ -74,6 +76,7 @@ class TestDashboardProcess(mp.Process):
 class DashBoardProcess(TestDashboardProcess):
     def __init__(self, agent: ElTuarMPC, cfg: Dict):
         super().__init__()
+        self.daemon = True
         self._agent = agent
         self._cfg = cfg
         if self._is_streaming:

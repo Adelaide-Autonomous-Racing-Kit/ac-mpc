@@ -104,6 +104,8 @@ class Perceiver:
     def shutdown(self):
         self._segmentor.is_running = False
         self._tracklimit_extractor.is_running = False
+        self._segmentor.join()
+        self._tracklimit_extractor.join()
 
     def __setup(self, cfg: Dict):
         self._setup_workers(cfg)
@@ -242,7 +244,7 @@ class TrackExtractionProcess(WorkerProcess):
     def _work(self):
         mask = self._get_new_mask()
         self._extract_tracklimits(mask)
-        # Track_Limits_Monitor.maybe_log_function_itterations_per_second()
+        # Track_Limits_Monitor.maybe_log_function_itterations_per_second() 
 
     def _get_new_mask(self) -> np.array:
         return np.squeeze(self._shared_mask.fresh_image, axis=0)
