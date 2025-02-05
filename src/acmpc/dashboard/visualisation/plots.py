@@ -3,6 +3,7 @@ from __future__ import annotations
 from acmpc.dashboard.visualisation import utils
 import cv2
 import numpy as np
+from loguru import logger
 
 N_POINTS = 400
 
@@ -41,6 +42,14 @@ def draw_localisation_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
 def draw_control_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
     tracks = agent.perception.visualisation_tracks
     predicted_trajectory = agent.controller.predicted_locations
+
+    localised_left_track = (
+        agent.localiser._localiser._shared_localised_left_track.points
+    )
+    localised_right_track = (
+        agent.localiser._localiser._shared_localised_right_track.points
+    )
+
     x, y = predicted_trajectory[:, 0], predicted_trajectory[:, 1]
     try:
         scale = 16
@@ -56,6 +65,13 @@ def draw_control_map(agent: ElTuarMPC, canvas: np.array) -> np.array:
         utils.draw_track_lines_on_bev(
             canvas, scale, [np.stack([x, y], axis=0).T], colour=(255, 255, 255)
         )
+        utils.draw_track_lines_on_bev(
+            canvas, scale, [localised_left_track], colour=(255, 150, 150)
+        )
+        utils.draw_track_lines_on_bev(
+            canvas, scale, [localised_right_track], colour=(150, 150, 255)
+        )
+
         canvas = cv2.flip(canvas, 0)
     except Exception as e:
         pass

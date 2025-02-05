@@ -134,6 +134,8 @@ class LocalisationProcess(mp.Process):
         super().__init__()
         self.daemon = True
         self._perceiver = perceiver
+        self._n_estimated_track_bounds = 200
+
         self._setup(cfg)
 
     @property
@@ -168,6 +170,45 @@ class LocalisationProcess(mp.Process):
     @particle_scores.setter
     def particle_scores(self, scores: np.array):
         self._shared_particle_scores.points = scores
+
+    @property
+    def estimated_ego_track_points(self) -> np.array:
+        return np.array(
+            [self._shared_localised_left_track, self._shared_localised_right_track]
+        )
+
+    @estimated_ego_track_points.setter
+    def estimated_ego_track_points(self, track_points: tuple):
+        self._shared_localised_left_track.points = track_points[0]
+        self._shared_localised_right_track.points = track_points[1]
+
+    @property
+    def estimated_track_bounds(self) -> tuple:
+        estimated_position = self.estimated_location
+        _, i_left = self.left_track.query(estimated_position[:2])
+        _, i_right = self.right_track.query(estimated_position[:2])
+
+        track_left = self._get_track_limit(
+            i_left, self._n_estimated_track_bounds, self.left_track
+        )
+        track_right = self._get_track_limit(
+            i_right, self._n_estimated_track_bounds, self.right_track
+        )
+
+        transformed_track_left = self.transform_track_bound_to_ego(
+            track_left, estimated_position
+        )
+        transformed_track_right = self.transform_track_bound_to_ego(
+            track_right, estimated_position
+        )
+
+        return (transformed_track_left, transformed_track_right)
+
+    def transform_track_bound_to_ego(self, bounds, position):
+        rot = position[2] - np.pi / 2
+        R_z = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
+        transformed_bound = bounds - position[:2]
+        return np.matmul(transformed_bound, R_z)
 
     @property
     def is_running(self) -> bool:
@@ -261,6 +302,7 @@ class LocalisationProcess(mp.Process):
         self._update_particle_heading_offsets(particles)
         self._update_particle_error(observations, particles)
         self._update_particle_scores(particles)
+        self._update_estimated_track_bounds()
         return particles
 
     def _add_observation(self):
@@ -378,7 +420,8 @@ class LocalisationProcess(mp.Process):
         particles: Dict,
     ) -> np.array:
         closest = particles["track_indices"][:, 1]
-        return self._get_track_limit(closest, observations[0], self.left_track)
+        n_points = observations[0].shape[0]
+        return self._get_track_limit(closest, n_points, self.left_track)
 
     def _get_right_track_limits(
         self,
@@ -386,16 +429,18 @@ class LocalisationProcess(mp.Process):
         particles: Dict,
     ) -> np.array:
         closest = particles["track_indices"][:, 2]
-        return self._get_track_limit(closest, observations[1], self.right_track)
+        n_points = observations[1].shape[0]
+        return self._get_track_limit(closest, n_points, self.right_track)
 
     def _get_track_limit(
         self,
-        closest: np.array,
-        observation: np.array,
+        closest_idxs: np.array,
+        n_points: int,
         track: KDTree,
     ) -> np.array:
-        n_points = observation.shape[0]
-        track_idxs = np.linspace(closest, closest + n_points, n_points, dtype=np.uint16)
+        track_idxs = np.linspace(
+            closest_idxs, closest_idxs + n_points, n_points, dtype=np.uint16
+        )
         track_idxs = np.mod(track_idxs, len(track)).T
         return track[track_idxs]
 
@@ -416,6 +461,9 @@ class LocalisationProcess(mp.Process):
             n_particles = particle_scores.shape[0]
             scores[:n_particles] = particles["score"]
             self.particle_scores = scores
+
+    def _update_estimated_track_bounds(self):
+        self.estimated_ego_track_points = self.estimated_track_bounds
 
     def _resample_particles(self, particles: Dict) -> bool:
         """
@@ -633,6 +681,14 @@ class LocalisationProcess(mp.Process):
         self.particle_lock = mp.Lock()
         self._shared_particle_scores = SharedPoints(self._max_n_particles, 0)
         self._shared_particle_states = SharedPoints(self._max_n_particles, 3)
+
+        self._shared_localised_left_track = SharedPoints(
+            self._n_estimated_track_bounds, 2
+        )
+        self._shared_localised_right_track = SharedPoints(
+            self._n_estimated_track_bounds, 2
+        )
+
         self._is_running = mp.Value("i", True)
         self._is_converged = mp.Value("i", False)
 

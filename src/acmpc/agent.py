@@ -35,7 +35,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.cfg = load.yaml(config_path)
         super().__init__(self.cfg["aci"])
         self.setup()
-        
+
     def restart_condition(self, observation: Dict) -> bool:
         return False
 
