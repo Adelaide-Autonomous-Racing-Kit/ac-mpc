@@ -36,6 +36,9 @@ class ElTuarMPC(AssettoCorsaInterface):
         super().__init__(self.cfg["aci"])
         self.setup()
 
+    def restart_condition(self, observation: Dict) -> bool:
+        return False
+
     def termination_condition(self, observation: Dict) -> bool:
         """
         Terminates the run if an agent does not make any progress around the track

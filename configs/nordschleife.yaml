@@ -12,7 +12,7 @@ is_streaming: True
 data_collection:
     collect_images: 0
 perception:
-    model_path: data/models/segmentation/nordschleife-fpn-resnet-18-v1.pt
+    model_path: data/models/segmentation/nordschleife-fpn-resnet-18-v1.1.pt
     precision: "fp16"
     compile_model: False
     image_width: 1280
@@ -24,7 +24,7 @@ perception:
     position: [0.0, 1.45000, 0.56000]
     pitch_deg: 2.889419
 mapping:
-    map_path: data/maps/nordschleife_smooth.npy
+    map_path: data/maps/nordschleife-smooth_1_1.npy
     create_map: False
     number_of_mapping_laps: 2
     control:
@@ -69,7 +69,7 @@ racing:
         horizon: 50
         unlocalised_max_speed: 20
         speed_profile_constraints:
-            v_min: 12.0
+            v_min: 8.0
             v_max: 84.0
             a_min: -1.0
             a_max: 1.0

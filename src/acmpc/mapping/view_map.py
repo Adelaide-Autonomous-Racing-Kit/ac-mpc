@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from acmpc.map_maker import MapMaker
+from acmpc.mapping.map_maker import MapMaker
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,9 +11,9 @@ def main(args: argparse.Namespace):
     title = Path(args.input_path).stem
     track_dict = np.load(args.input_path, allow_pickle=True).item()
 
-    outside = track_dict.get("outside_track")
-    inside = track_dict.get("inside_track")
-    centre = track_dict.get("centre_track")
+    outside = track_dict.get("outside_track")[::-1][5:-5]
+    inside = track_dict.get("inside_track")[5:-5]
+    centre = track_dict.get("centre_track")[5:-5]
 
     if args.smooth_map:
         outside = MapMaker.upsample_track(outside)
