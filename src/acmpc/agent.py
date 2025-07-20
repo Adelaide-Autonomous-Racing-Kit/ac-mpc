@@ -329,6 +329,12 @@ class ElTuarMPC(AssettoCorsaInterface):
         if self.localiser and self._is_collecting_localisation_data:
             np.save(self._save_localisation_path, self._localisation_obs)
 
+    def restart_condition(self, observation: Dict) -> bool:
+        return False
+
+    def on_restart(self):
+        pass
+
     def setup(self):
         self._setup_localisation_benchmark_config()
         self._setup_state()

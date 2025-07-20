@@ -64,7 +64,8 @@ class SpatialBicycleModel:
 
     def linearise(self, reference_path: ReferencePath) -> Tuple[np.array]:
         """
-        Linearise the system equations around provided reference values.
+        Uses a first order approximation of the spatial bicycle model at each provided
+            reference waypoint.
         """
         delta_s = reference_path.distances
         kappa_ref = reference_path.kappas
@@ -72,32 +73,24 @@ class SpatialBicycleModel:
         n = len(reference_path)
         ones_col = np.ones(n)
         zeros_col = np.zeros(n)
-
-        ###################
-        # System Matrices #
-        ###################
-        # Construct Jacobian Matrices
+        # State dependant dynamics
         A = np.zeros((n, 3, 3))
         a_1 = np.vstack([ones_col, delta_s, zeros_col]).T
         a_2 = np.vstack([-(kappa_ref**2) * delta_s, ones_col, zeros_col]).T
-        a_3 = np.vstack(
-            [-kappa_ref / (v_ref * delta_s + self._eps), zeros_col, ones_col]
-        ).T
+        a_3 = np.vstack([-(kappa_ref * delta_s) / v_ref, zeros_col, ones_col]).T
         A[:, 0, :] = a_1
         A[:, 1, :] = a_2
         A[:, 2, :] = a_3
-
+        # Control dependant dynamics
         B = np.zeros((n, 3, 2))
-        b_1 = np.zeros((n, 2))
         b_2 = np.zeros((n, 2))
         b_3 = np.zeros((n, 2))
         b_2[:, 1] = delta_s
-        b_3[:, 0] = -1 / (v_ref**2 * delta_s + self._eps)
-        B[:, 0, :] = b_1
+        b_3[:, 0] = -delta_s / v_ref**2
         B[:, 1, :] = b_2
         B[:, 2, :] = b_3
-
+        # Constant dynamics
         f = np.zeros((n, 3))
-        f[:, 2] = 1 / (v_ref * delta_s + self._eps)
-
+        f[:, 1] = -kappa_ref * delta_s
+        f[:, 2] = 2 * delta_s / v_ref
         return f, A, B
