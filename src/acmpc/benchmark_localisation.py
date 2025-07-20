@@ -21,7 +21,7 @@ def main():
         f"Average position error: {benchmarker._tracker.average_position_error():.2f} meters"
     )
     logger.success(
-        f"Average rotation error: {benchmarker._tracker.average_rotation_error() * 180/np.pi:.2f} degrees"
+        f"Average rotation error: {benchmarker._tracker.average_rotation_error() * 180 / np.pi:.2f} degrees"
     )
 
 
