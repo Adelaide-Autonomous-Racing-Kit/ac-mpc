@@ -244,7 +244,7 @@ class TrackExtractionProcess(WorkerProcess):
     def _work(self):
         mask = self._get_new_mask()
         self._extract_tracklimits(mask)
-        # Track_Limits_Monitor.maybe_log_function_itterations_per_second() 
+        # Track_Limits_Monitor.maybe_log_function_itterations_per_second()
 
     def _get_new_mask(self) -> np.array:
         return np.squeeze(self._shared_mask.fresh_image, axis=0)
