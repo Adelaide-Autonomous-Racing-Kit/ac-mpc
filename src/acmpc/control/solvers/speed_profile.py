@@ -30,17 +30,17 @@ class SpeedProfileSolver:
     ):
         max_ay = self._max_lateral_acceleration
         # Create matrices
-        v_max = np.ones(self._n_horizon) * self._max_velocity
+        v_max = np.ones(self._n_horizon) * (self._max_velocity**2)
         # Dynamic v_max bases on path curvature
         is_bellow_minimum_kappa = np.abs(reference_path.kappas) < self._min_kappa
-        v_max_dyn = np.sqrt(max_ay / (np.abs(reference_path.kappas) + self._eps))
-        v_max_dyn[is_bellow_minimum_kappa] = self._max_velocity
+        v_max_dyn = max_ay / (np.abs(reference_path.kappas) + self._eps)
+        v_max_dyn[is_bellow_minimum_kappa] = self._max_velocity**2
         v_mins = np.min([v_max_dyn, v_max], axis=0)
         v_maxs = np.max([self._min_velocities, v_mins], axis=0)
         v_max = v_maxs + 2e0
         # Final velocity
         if end_velocity is not None:
-            v_max[-1] = end_velocity
+            v_max[-1] = end_velocity**2
         # Update
         self._max_velocities = v_max
 
@@ -56,7 +56,7 @@ class SpeedProfileSolver:
         self._A = sparse.vstack([D1, self._D2], format="csc")
 
     def _update_costs(self):
-        self._q = -1 * self._max_velocities
+        self._q = -1 * (self._max_velocities**2)
 
     def _solve_QP_problem(self) -> SimpleNamespace:
         if self._problem is None:
@@ -123,7 +123,7 @@ class SpeedProfileSolver:
     def _allocate_static_matrices(self):
         self._D2 = sparse.eye(self._n_horizon)
         self._P = sparse.eye(self._n_horizon, format="csc")
-        self._min_velocities = np.ones(self._n_horizon) * self._min_velocity
+        self._min_velocities = np.ones(self._n_horizon) * (self._min_velocity**2)
         self._min_accelerations = np.ones(self._n_horizon - 1) * self._min_acceleration
         self._max_accelerations = np.ones(self._n_horizon - 1) * self._max_acceleration
 
@@ -134,13 +134,10 @@ class LocalisedSpeedProfileSolver(SpeedProfileSolver):
         reference_path: ReferencePath,
         end_velocity: Union[float, None] = None,
     ):
-        self._max_velocities = np.ones(self._n_horizon) * self._max_velocity
+        self._max_velocities = np.ones(self._n_horizon) * (self._max_velocity**2)
 
     def _update_problem_bounds(self):
         self._upper_bounds = np.hstack([self._max_accelerations, self._max_velocities])
-
-    def _update_costs(self):
-        self._q = -1 * self._max_velocities
 
     def _update_QP_problem(self):
         self._problem.update(Ax=self._A.data, q=self._q, u=self._upper_bounds)

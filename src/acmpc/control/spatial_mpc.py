@@ -111,7 +111,7 @@ class SpatialMPC:
         end_vel=None,
     ) -> ReferencePath:
         dec = solver.solve(reference_path, end_vel)
-        speed_profile = dec.x
+        speed_profile = np.sqrt(dec.x)
         if dec.info.status == "solved":
             # Assign reference velocity to every waypoint
             reference_path.velocities = speed_profile
