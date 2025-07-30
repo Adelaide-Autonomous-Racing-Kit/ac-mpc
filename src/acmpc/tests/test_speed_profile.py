@@ -16,9 +16,9 @@ def main():
         "speed_profile_constraints": {
             "v_min": 12.0,
             "v_max": 84.0,
-            "a_min": -14.0,
+            "a_min": -15.0,
             "a_max": 9.0,
-            "ay_max": 5.5,
+            "ay_max": 15.0,
             "ki_min": 0.005,
             "end_velocity": 14.0,
         },

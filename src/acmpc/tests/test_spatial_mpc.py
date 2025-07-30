@@ -14,19 +14,20 @@ import numpy as np
 
 def main():
     config = {
-        "horizon": 100,
+        "horizon": 50,
         "unlocalised_max_speed": 28,
         "speed_profile_constraints": {
             "v_min": 12.0,
             "v_max": 84.0,
-            "a_min": -1.0,
-            "a_max": 1.0,
-            "ay_max": 5.5,
+            "a_min": -15.0,
+            "a_max": 8.0,
+            "ay_max": 15.0,
             "ki_min": 0.005,
             "end_velocity": 14.0,
         },
         "step_cost": [2.0e-3, 5.0e-2, 0.0],  # e_y, e_psi, t
-        "r_term": [1.0e-2, 10.0],  # velocity, steering
+        "r_term": [1.0e-1, 10.0],  # velocity, steering
+        "s_term": [1.0e-1, 100.0],  # velocity, steering
         "final_cost": [1.0, 0.0, 0.1],  # e_y, e_psi, t
     }
     vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
@@ -37,7 +38,7 @@ def main():
     path_type = "hairpin"  # "hairpin", "curve", "chicane"
 
     # Experiment settings
-    colours = ["b", "c", "k", "g", "m", "y", "r"]
+    colours = ["b", "c", "k", "orange", "m", "y", "r"]
     show_example_by_example = False
     angle = 0.1
     experiments = 7

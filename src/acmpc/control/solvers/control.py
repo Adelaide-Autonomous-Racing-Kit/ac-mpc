@@ -124,8 +124,18 @@ class ControlSolver:
         n_u = self._n_spatial_states
         # Cost Matrices
         self._Q = sparse.diags(config["step_cost"])  # e_y, e_psi, t
-        self._R = sparse.diags(config["r_term"])  # velocity, delta
         self._QN = sparse.diags(config["final_cost"])  # e_y, e_psi, t
+        self._R = sparse.diags(config["r_term"])  # velocity, delta
+        # Smoothness Penalty
+        s_term = config.get("s_term", [1.0e-10, 1.0e-10])
+        off_diagonal_weights_S = -1 * sparse.diags(s_term)  # velocity, delta
+        main_diagonal_weights_S = 2 * sparse.diags(s_term)  # velocity, delta
+        main_diagonal_S = sparse.kron(sparse.eye(n), main_diagonal_weights_S)
+        main_diagonal_S.data[0] *= 0.5
+        main_diagonal_S.data[-1] *= 0.5
+        upper_diagonal_S = sparse.kron(sparse.eye(n, k=1), off_diagonal_weights_S)
+        lower_diagonal_S = sparse.kron(sparse.eye(n, k=-1), off_diagonal_weights_S)
+        self._S = main_diagonal_S + upper_diagonal_S + lower_diagonal_S
         # Input constraints
         self._u_max = self._dynamics_model.max_u
         self._u_min = self._dynamics_model.min_u
@@ -152,7 +162,7 @@ class ControlSolver:
             [
                 sparse.kron(sparse.eye(n), self._Q),
                 self._QN,
-                sparse.kron(sparse.eye(n), self._R),
+                sparse.kron(sparse.eye(n), self._R) + self._S,
             ],
             format="csc",
         )
