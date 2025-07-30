@@ -56,7 +56,7 @@ class SpeedProfileSolver:
         self._A = sparse.vstack([D1, self._D2], format="csc")
 
     def _update_costs(self):
-        self._q = -1 * (self._max_velocities**2)
+        self._q = -1 * self._max_velocities
 
     def _solve_QP_problem(self) -> SimpleNamespace:
         if self._problem is None:

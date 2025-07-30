@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import time
 from typing import Dict
 
 from ace.steering import SteeringGeometry
-from control.controller import build_mpc
-from loguru import logger
+from acmpc.control.controller import build_mpc
 import matplotlib.pyplot as plt
 import numpy as np
-from utils import load
+from acmpc.utils import load
 
 
 def main():
@@ -18,8 +16,8 @@ def main():
         "speed_profile_constraints": {
             "v_min": 12.0,
             "v_max": 84.0,
-            "a_min": -1.0,
-            "a_max": 1.0,
+            "a_min": -14.0,
+            "a_max": 9.0,
             "ay_max": 5.5,
             "ki_min": 0.005,
             "end_velocity": 14.0,
@@ -28,10 +26,10 @@ def main():
         "r_term": [1.0e-2, 10.0],  # velocity, steering
         "final_cost": [1.0, 0.0, 0.1],  # e_y, e_psi, t
     }
-    ay_max = 7.0
-    a_min = -0.135
-    track_map = load.track_map("track_maps/monza_verysmooth_2.npy")
-    vehicle_data = SteeringGeometry("data/audi_r8_lms_2016")
+    ay_max = 15.0
+    a_min = config["speed_profile_constraints"]["a_min"]
+    track_map = load.track_map("data/maps/monza_verysmooth.npy")
+    vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
     mpc = build_mpc(config, vehicle_data)
     centre_track = format_track_map(track_map)
     calculate_speed_profile(a_min, ay_max, centre_track, mpc)
