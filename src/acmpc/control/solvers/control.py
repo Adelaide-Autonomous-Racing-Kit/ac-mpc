@@ -61,8 +61,10 @@ class ControlSolver:
         # Set reference for state as center-line of drivable area
         self._xrs[nx::nx] = (x_lower_bounds + x_upper_bounds) / 2
         # Get upper and lower bound vectors for equality constraints
-        lineq = np.hstack([self._x_mins, self._u_mins])
-        uineq = np.hstack([self._x_maxs, self._u_maxs])
+        u_mins = self._dynamic_u_min(reference_path)
+        u_maxs = self._dynamic_u_max(reference_path)
+        lineq = np.hstack([self._x_mins, u_mins])
+        uineq = np.hstack([self._x_maxs, u_maxs])
         # Get upper and lower bound vectors for inequality constraints
         leq = np.hstack([-spatial_state, self._uq])
         ueq = leq
@@ -139,14 +141,10 @@ class ControlSolver:
         # Input constraints
         self._u_max = self._dynamics_model.max_u
         self._u_min = self._dynamics_model.min_u
+        self._ay_max = config["speed_profile_constraints"]["ay_max"]
         # State constraints
         self._x_max = np.array([np.inf, np.inf, np.inf])
         self._x_min = np.array([-np.inf, -np.inf, 0.01])
-        # Input Constrains [velocity, angle]
-        self._u_maxs = np.kron(np.ones(n), self._u_max)
-        self._u_mins = np.kron(np.ones(n), self._u_min)
-        self._u_maxs[::2] += 0.1
-        self._u_mins[::2] -= 0.1
         # Dynamic state constraints
         self._x_mins = np.kron(np.ones(n + 1), self._x_min)
         self._x_maxs = np.kron(np.ones(n + 1), self._x_max)
@@ -162,7 +160,25 @@ class ControlSolver:
             [
                 sparse.kron(sparse.eye(n), self._Q),
                 self._QN,
-                sparse.kron(sparse.eye(n), self._R) + self._S,
+                self._S,
             ],
             format="csc",
         )
+
+    def _dynamic_u_min(self, reference_path: ReferencePath) -> np.array:
+        v_mins = np.kron(np.ones(reference_path.velocities.shape), self._u_min[0])
+        kappa_maxs = self._dynamic_max_kappa(reference_path)
+        references = np.array([v_mins, -kappa_maxs]).T
+        u_mins = np.ravel(references)
+        u_mins[::2] -= 0.1
+        return u_mins
+
+    def _dynamic_u_max(self, reference_path: ReferencePath) -> np.array:
+        kappa_maxs = self._dynamic_max_kappa(reference_path)
+        references = np.array([reference_path.velocities, kappa_maxs]).T
+        u_maxs = np.ravel(references)
+        u_maxs[::2] += 0.1
+        return u_maxs
+
+    def _dynamic_max_kappa(self, reference_path: ReferencePath) -> np.array:
+        return self._ay_max / reference_path.velocities

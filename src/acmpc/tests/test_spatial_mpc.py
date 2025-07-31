@@ -21,14 +21,14 @@ def main():
             "v_max": 84.0,
             "a_min": -15.0,
             "a_max": 8.0,
-            "ay_max": 15.0,
+            "ay_max": 12.0,
             "ki_min": 0.005,
             "end_velocity": 14.0,
         },
-        "step_cost": [2.0e-3, 5.0e-2, 0.0],  # e_y, e_psi, t
-        "r_term": [1.0e-1, 10.0],  # velocity, steering
+        "step_cost": [2.0e-2, 5.0, 0.1],  # e_y, e_psi, t
+        "r_term": [0.0, 0.0],  # velocity, steering
         "s_term": [1.0e-1, 100.0],  # velocity, steering
-        "final_cost": [1.0, 0.0, 0.1],  # e_y, e_psi, t
+        "final_cost": [0.0, 0.1, 0.1],  # e_y, e_psi, t
     }
     vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
     mpc = build_mpc(config, vehicle_data)
