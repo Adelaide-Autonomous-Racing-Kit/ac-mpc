@@ -14,10 +14,9 @@ class SpatialBicycleModel:
         self.margin = self.width / 2
         self.min_velocity = velocity_limits["min"]
         self.max_velocity = velocity_limits["max"]
-        self.min_u = np.array(
-            [self.min_velocity, -np.tan(self.delta_max) / self.length]
-        )
-        self.max_u = np.array([self.max_velocity, np.tan(self.delta_max) / self.length])
+        max_kappa = np.tan(self.delta_max) / self.length
+        self.min_u = np.array([self.min_velocity, -max_kappa])
+        self.max_u = np.array([self.max_velocity, max_kappa])
         self._eps = 1e-12
 
     def t2s(self, reference_waypoint: np.array, reference_state: np.array) -> np.array:

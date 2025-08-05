@@ -248,6 +248,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
         self.game_pose.pose = obs
         self.session_info.session_info = obs
+        self.controller.current_speed = self.pose["velocity"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         elapsed_time_since_last_update = time.time() - self.last_update_time

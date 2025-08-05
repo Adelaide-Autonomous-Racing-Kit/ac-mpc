@@ -58,11 +58,19 @@ class Controller:
 
     @property
     def reference_speed(self) -> float:
-        return self.controller.reference_speed
+        return self._controller.reference_speed
 
     @reference_speed.setter
     def reference_speed(self, reference_speed: float):
         self._controller.reference_speed = reference_speed
+
+    @property
+    def current_speed(self) -> float:
+        return self._controller.current_speed
+
+    @reference_speed.setter
+    def current_speed(self, current_speed: float):
+        self._controller.current_speed = current_speed
 
     @property
     def is_localised(self) -> bool:
@@ -254,6 +262,17 @@ class ControlProcess(mp.Process):
             self._shared_reference_speed.value = reference_speed
 
     @property
+    def current_speed(self) -> float:
+        with self._shared_current_speed.get_lock():
+            current_speed = self._shared_current_speed.value
+        return current_speed
+
+    @current_speed.setter
+    def current_speed(self, current_speed: float):
+        with self._shared_current_speed.get_lock():
+            self._shared_current_speed.value = current_speed
+
+    @property
     def _reference_path(self) -> np.array:
         centreline = self._perceiver.centreline
         ds = int(len(centreline) / self._control_horizon)
@@ -309,3 +328,4 @@ class ControlProcess(mp.Process):
         self._is_localised = mp.Value("i", False)
         self._shared_update_timestamp = mp.Value("d", 0.0)
         self._shared_reference_speed = mp.Value("d", 0.0)
+        self._shared_current_speed = mp.Value("d", 0.0)

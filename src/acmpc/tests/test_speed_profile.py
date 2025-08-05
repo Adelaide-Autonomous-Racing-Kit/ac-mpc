@@ -11,13 +11,13 @@ from acmpc.utils import load
 
 def main():
     config = {
-        "horizon": 100,
+        "horizon": 50,
         "unlocalised_max_speed": 28,
         "speed_profile_constraints": {
-            "v_min": 12.0,
+            "v_min": 8.0,
             "v_max": 84.0,
-            "a_min": -15.0,
-            "a_max": 9.0,
+            "a_min": -12.0,
+            "a_max": 8.0,
             "ay_max": 15.0,
             "ki_min": 0.005,
             "end_velocity": 14.0,
@@ -26,7 +26,7 @@ def main():
         "r_term": [1.0e-2, 10.0],  # velocity, steering
         "final_cost": [1.0, 0.0, 0.1],  # e_y, e_psi, t
     }
-    ay_max = 15.0
+    ay_max = 12.0
     a_min = config["speed_profile_constraints"]["a_min"]
     track_map = load.track_map("data/maps/monza_verysmooth.npy")
     vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")

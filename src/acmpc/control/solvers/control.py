@@ -7,6 +7,8 @@ import numpy as np
 import osqp
 from scipy import sparse
 
+np.set_printoptions(threshold=np.inf)
+
 
 class ControlSolver:
     def __init__(self, config: Dict, model: SpatialBicycleModel):
@@ -97,6 +99,8 @@ class ControlSolver:
             u=self._upper_bounds,
             verbose=False,
             max_iter=self._max_iterations,
+            # eps_abs=0.5,
+            # eps_rel=0.5,
         )
 
     def _update_QP_problem(self):
@@ -142,6 +146,7 @@ class ControlSolver:
         self._u_max = self._dynamics_model.max_u
         self._u_min = self._dynamics_model.min_u
         self._ay_max = config["speed_profile_constraints"]["ay_max"]
+        self._static_kappa_max = np.ones(self._n_horizon) * self._u_max[1]
         # State constraints
         self._x_max = np.array([np.inf, np.inf, np.inf])
         self._x_min = np.array([-np.inf, -np.inf, 0.01])
@@ -160,14 +165,16 @@ class ControlSolver:
             [
                 sparse.kron(sparse.eye(n), self._Q),
                 self._QN,
-                self._S,
+                sparse.kron(sparse.eye(n), self._R) + self._S,
             ],
             format="csc",
         )
 
     def _dynamic_u_min(self, reference_path: ReferencePath) -> np.array:
         v_mins = np.kron(np.ones(reference_path.velocities.shape), self._u_min[0])
+        v_mins = np.min([reference_path.velocities, v_mins], axis=0)
         kappa_maxs = self._dynamic_max_kappa(reference_path)
+        print(kappa_maxs)
         references = np.array([v_mins, -kappa_maxs]).T
         u_mins = np.ravel(references)
         u_mins[::2] -= 0.1
@@ -181,4 +188,5 @@ class ControlSolver:
         return u_maxs
 
     def _dynamic_max_kappa(self, reference_path: ReferencePath) -> np.array:
-        return self._ay_max / reference_path.velocities
+        dynamic_kappa_max = self._ay_max / (reference_path.velocities**2)
+        return np.min([dynamic_kappa_max, self._static_kappa_max], axis=0)

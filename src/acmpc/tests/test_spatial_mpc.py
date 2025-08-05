@@ -17,18 +17,18 @@ def main():
         "horizon": 50,
         "unlocalised_max_speed": 28,
         "speed_profile_constraints": {
-            "v_min": 12.0,
+            "v_min": 8.0,
             "v_max": 84.0,
-            "a_min": -15.0,
+            "a_min": -12.0,
             "a_max": 8.0,
-            "ay_max": 12.0,
+            "ay_max": 10.0,
             "ki_min": 0.005,
             "end_velocity": 14.0,
         },
-        "step_cost": [2.0e-2, 5.0, 0.1],  # e_y, e_psi, t
-        "r_term": [0.0, 0.0],  # velocity, steering
-        "s_term": [1.0e-1, 100.0],  # velocity, steering
-        "final_cost": [0.0, 0.1, 0.1],  # e_y, e_psi, t
+        "step_cost": [500.0, 50.0, 0.01],  # e_y, e_psi, t
+        "r_term": [0.1, 100.0],  # velocity, steering
+        "s_term": [1.0e-1, 1.0],  # velocity, steering
+        "final_cost": [500.0, 50.0, 0.01],  # e_y, e_psi, t
     }
     vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
     mpc = build_mpc(config, vehicle_data)
@@ -84,12 +84,12 @@ def main():
             ).T
 
             st = time.time()
-            mpc.get_control(test_reference_path, offset=0.0)
+            mpc.get_control(test_reference_path, offset=0.0, current_velocity=2.0)
             print(f"Time to solve get_control: {time.time() - st:.4f}")
 
             # print(controller.current_prediction)
             cum_dist = np.cumsum(mpc.reference_path.distances)
-            # print(mpc.current_control)
+            # print(mpc.cum_time)
 
             if show_example_by_example:
                 ax[0].clear()
@@ -116,6 +116,7 @@ def main():
 
             ax1[1].set_title("Steering command (rad)")
             ax1[1].plot(mpc.projected_control[1], c=colours[i])
+            ax1[1].plot(mpc.reference_path.kappas, "--", c=colours[i])
 
             ax[0].set_aspect(1)
 
