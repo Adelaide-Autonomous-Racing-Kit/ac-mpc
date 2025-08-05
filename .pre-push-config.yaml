@@ -4,7 +4,7 @@ repos:
       - id: black
         name: Code Prettifier - Black
         entry: python -m black "src/"
-        language_version: python3.9
+        language_version: python3.11
         language: python
         pass_filenames: false
 
