@@ -6,14 +6,15 @@ import time
 from typing import Dict, List, Tuple
 
 from ace.steering import SteeringGeometry
-from aci.utils.system_monitor import SystemMonitor, track_runtime
+
+# from aci.utils.system_monitor import SystemMonitor, track_runtime
 from acmpc.control.commands import TemporalCommandSelector
 from acmpc.control.dynamics import SpatialBicycleModel
 from acmpc.control.spatial_mpc import SpatialMPC
 from acmpc.perception.shared_memory import SharedPoints
 import numpy as np
 
-Control_Monitor = SystemMonitor(300)
+# Control_Monitor = SystemMonitor(300)
 
 
 def build_mpc(control_config: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:
@@ -238,11 +239,13 @@ class ControlProcess(mp.Process):
                 self._update_control()
             # Control_Monitor.maybe_log_function_itterations_per_second()
 
-    @track_runtime(Control_Monitor)
+    # @track_runtime(Control_Monitor)
     def _update_control(self):
         self._update_reference_speed()
         self.model_predictive_controller.get_control(
-            self._reference_path, self.is_localised
+            self._reference_path,
+            self.is_localised,
+            current_velocity=self.current_speed,
         )
         self._update_shared_memory()
 

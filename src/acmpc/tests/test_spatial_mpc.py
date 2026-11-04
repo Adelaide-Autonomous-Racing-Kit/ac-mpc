@@ -17,18 +17,18 @@ def main():
         "horizon": 50,
         "unlocalised_max_speed": 28,
         "speed_profile_constraints": {
-            "v_min": 8.0,
+            "v_min": 0.5,
             "v_max": 84.0,
             "a_min": -12.0,
             "a_max": 8.0,
-            "ay_max": 10.0,
+            "ay_max": 16.0,
             "ki_min": 0.005,
-            "end_velocity": 14.0,
+            "end_velocity": 20.0,
         },
-        "step_cost": [500.0, 50.0, 0.01],  # e_y, e_psi, t
-        "r_term": [0.1, 100.0],  # velocity, steering
-        "s_term": [1.0e-1, 1.0],  # velocity, steering
-        "final_cost": [500.0, 50.0, 0.01],  # e_y, e_psi, t
+        "step_cost": [10.0, 20.0, 1.0],  # e_y, e_psi, t
+        "r_term": [0.1, 10.0],  # velocity, steering
+        "s_term": [1.0e-1, 10000.0],  # velocity, steering
+        "final_cost": [10.0, 20.0, 1.0],  # e_y, e_psi, t
     }
     vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
     mpc = build_mpc(config, vehicle_data)
@@ -113,10 +113,15 @@ def main():
             ax1[0].set_title("Velocity reference: green, Planned velocity: red, m/s")
             ax1[0].plot(mpc.projected_control[0], c=colours[i])
             ax1[0].plot(mpc.speed_profile, "--", c=colours[i])
-
             ax1[1].set_title("Steering command (rad)")
-            ax1[1].plot(mpc.projected_control[1], c=colours[i])
-            ax1[1].plot(mpc.reference_path.kappas, "--", c=colours[i])
+            ax1[1].plot(
+                np.tan(mpc.projected_control[1]) / mpc.model.length, c=colours[i]
+            )
+            ax1[1].plot(
+                mpc.reference_path.kappas,
+                "--",
+                c=colours[i],
+            )
 
             ax[0].set_aspect(1)
 

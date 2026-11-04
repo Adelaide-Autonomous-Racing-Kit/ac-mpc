@@ -61,14 +61,18 @@ class SpatialBicycleModel:
 
         return np.array([xs, ys, psis])
 
-    def linearise(self, reference_path: ReferencePath) -> Tuple[np.array]:
+    def linearise(
+        self,
+        reference_path: ReferencePath,
+        previous_control: Control,
+    ) -> Tuple[np.array]:
         """
         Uses a first order approximation of the spatial bicycle model at each provided
             reference waypoint.
         """
         delta_s = reference_path.distances
         kappa_ref = reference_path.kappas
-        v_ref = reference_path.velocities
+        v_ref = previous_control.velocities
         n = len(reference_path)
         ones_col = np.ones(n)
         zeros_col = np.zeros(n)

@@ -18,23 +18,30 @@ class ControlSolver:
         self,
         spatial_state: np.array,
         reference_path: ReferencePath,
+        previous_controls: Controls,
     ) -> SimpleNameSpace:
-        self._update_references(reference_path)
-        self._update_inequalities()
-        self._update_problem_bounds(spatial_state, reference_path)
+        self._update_references(reference_path, previous_controls)
+        self._update_inequalities(previous_controls)
+        self._update_problem_bounds(
+            spatial_state,
+            reference_path,
+            previous_controls,
+        )
         self._update_costs()
         return self._solve_QP_problem()
 
-    def _update_references(self, reference_path: ReferencePath):
-        references = np.array([reference_path.velocities, reference_path.kappas])
+    def _update_references(
+        self,
+        reference_path: ReferencePath,
+        previous_controls: Controls,
+    ):
+        references = np.array([previous_controls.velocities, reference_path.kappas])
         self._urs = np.ravel(references, order="F")
-        f, A, B = self._dynamics_model.linearise(reference_path)
+        f, A, B = self._dynamics_model.linearise(reference_path, previous_controls)
         self._f, self._A_block, self._B_block = f, A, B
-        self._uq = np.ravel(
-            np.einsum("BNi,iB ->BN", self._B_block, references) - self._f
-        )
+        self._uq = np.ravel(-self._f)
 
-    def _update_inequalities(self):
+    def _update_inequalities(self, reference_controls: Controls):
         # Format matrices
         A = sparse.block_diag(self._A_block, format="csc")
         A = sparse.block_array([[np.zeros((3, A.shape[1]))], [A]], format="csc")
@@ -44,12 +51,24 @@ class ControlSolver:
         A_x = self._A_1 + sparse.csc_matrix(A)
         B_u = sparse.csc_matrix(B)
         A_eq = sparse.hstack([A_x, B_u])
-        self._A = sparse.vstack([A_eq, self._A_ineq], format="csc")
+        A_ineq_dynamic = self._A_ineq_dynamic(
+            reference_controls.velocities,
+            reference_controls.kappas,
+        )
+        self._A = sparse.vstack(
+            [
+                A_eq,
+                self._A_ineq_static,
+                A_ineq_dynamic,
+            ],
+            format="csc",
+        )
 
     def _update_problem_bounds(
         self,
         spatial_state: np.array,
         reference_path: ReferencePath,
+        reference_controls: Controls,
     ):
         nx = self._n_temporal_states
         widths = reference_path.widths
@@ -65,8 +84,16 @@ class ControlSolver:
         # Get upper and lower bound vectors for equality constraints
         u_mins = self._dynamic_u_min(reference_path)
         u_maxs = self._dynamic_u_max(reference_path)
-        lineq = np.hstack([self._x_mins, u_mins])
-        uineq = np.hstack([self._x_maxs, u_maxs])
+        ay_maxs = self._lateral_acceleration_upper_bound(
+            reference_controls.velocities,
+            reference_controls.kappas,
+        )
+        ay_mins = self._lateral_acceleration_lower_bound(
+            reference_controls.velocities,
+            reference_controls.kappas,
+        )
+        lineq = np.hstack([self._x_mins, u_mins, ay_mins])
+        uineq = np.hstack([self._x_maxs, u_maxs, ay_maxs])
         # Get upper and lower bound vectors for inequality constraints
         leq = np.hstack([-spatial_state, self._uq])
         ueq = leq
@@ -99,8 +126,6 @@ class ControlSolver:
             u=self._upper_bounds,
             verbose=False,
             max_iter=self._max_iterations,
-            # eps_abs=0.5,
-            # eps_rel=0.5,
         )
 
     def _update_QP_problem(self):
@@ -149,7 +174,7 @@ class ControlSolver:
         self._static_kappa_max = np.ones(self._n_horizon) * self._u_max[1]
         # State constraints
         self._x_max = np.array([np.inf, np.inf, np.inf])
-        self._x_min = np.array([-np.inf, -np.inf, 0.01])
+        self._x_min = np.array([-np.inf, -np.inf, 0.0])
         # Dynamic state constraints
         self._x_mins = np.kron(np.ones(n + 1), self._x_min)
         self._x_maxs = np.kron(np.ones(n + 1), self._x_max)
@@ -157,7 +182,7 @@ class ControlSolver:
         self._xrs = np.zeros(n_x * (n + 1))
         # Construction matrices
         self._A_1 = sparse.kron(sparse.eye(n + 1), -sparse.eye(n_x))
-        self._A_ineq = sparse.eye((n + 1) * n_x + n * n_u)
+        self._A_ineq_static = sparse.eye((n + 1) * n_x + n * n_u)
         self._q_Q = np.tile(np.diag(self._Q.toarray()), n)
         self._q_R = np.tile(np.diag(self._R.toarray()), n)
         # Cost matrix P
@@ -173,20 +198,31 @@ class ControlSolver:
     def _dynamic_u_min(self, reference_path: ReferencePath) -> np.array:
         v_mins = np.kron(np.ones(reference_path.velocities.shape), self._u_min[0])
         v_mins = np.min([reference_path.velocities, v_mins], axis=0)
-        kappa_maxs = self._dynamic_max_kappa(reference_path)
-        print(kappa_maxs)
+        kappa_maxs = self._static_kappa_max
         references = np.array([v_mins, -kappa_maxs]).T
-        u_mins = np.ravel(references)
-        u_mins[::2] -= 0.1
-        return u_mins
+        return np.ravel(references)
 
     def _dynamic_u_max(self, reference_path: ReferencePath) -> np.array:
-        kappa_maxs = self._dynamic_max_kappa(reference_path)
+        kappa_maxs = self._static_kappa_max
         references = np.array([reference_path.velocities, kappa_maxs]).T
-        u_maxs = np.ravel(references)
-        u_maxs[::2] += 0.1
-        return u_maxs
+        return np.ravel(references)
 
-    def _dynamic_max_kappa(self, reference_path: ReferencePath) -> np.array:
-        dynamic_kappa_max = self._ay_max / (reference_path.velocities**2)
-        return np.min([dynamic_kappa_max, self._static_kappa_max], axis=0)
+    def _A_ineq_dynamic(self, velocities, kappas):
+        velocity_coeff = 2 * velocities * kappas
+        kappa_coeff = velocities**2
+        coeffs = np.hstack([velocity_coeff, kappa_coeff])
+        n = velocities.shape[0]
+        indices = np.arange(n)
+        row_indices = np.hstack([indices, indices])
+        col_indices = np.hstack([2 * indices, 2 * indices + 1])
+        positions = (row_indices, col_indices)
+        decision = sparse.coo_matrix((coeffs, positions), shape=(n, 2 * n))
+        state_length = (self._n_horizon + 1) * self._n_temporal_states
+        state = sparse.coo_matrix((self._n_horizon, state_length))
+        return sparse.hstack([state, decision])
+
+    def _lateral_acceleration_upper_bound(self, velocities, kappas):
+        return self._ay_max + 2 * velocities**2 * kappas
+
+    def _lateral_acceleration_lower_bound(self, velocities, kappas):
+        return -self._ay_max + 2 * velocities**2 * kappas

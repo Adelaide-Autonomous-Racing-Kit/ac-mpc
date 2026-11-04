@@ -14,7 +14,7 @@ from loguru import logger
 import numpy as np
 
 MAX_SOLVER_ITERATIONS_MAP = 400000
-MAX_SOLVER_ITERATIONS = 40000
+MAX_SOLVER_ITERATIONS = 1000
 
 
 class SpatialMPC:
@@ -49,6 +49,8 @@ class SpatialMPC:
         config["max_iterations"] = MAX_SOLVER_ITERATIONS
         self._control_solver = ControlSolver(config, model)
         # Speed Profile Solvers
+        self._profile_convergence = config.get("profile_convergence", 0.05)
+        self._profile_max_iterations = config.get("profile_max_iterations", 5)
         config = {
             "control_horizon": self.MPC_horizon - 1,
             "max_iterations": MAX_SOLVER_ITERATIONS,
@@ -194,12 +196,34 @@ class SpatialMPC:
         state = np.array([offset, 0, np.pi / 2])
         # Update spatial state
         spatial_state = self.model.t2s(reference_path.get_state(0), state)
-        # Initialize optimization problem
-        try:
-            dec = self._control_solver.solve(spatial_state, reference_path)
-        except Exception as e:
-            logger.warning(e)
+        dec = self._solve_control(spatial_state, reference_path)
+        if dec is None:
             return
+        for _ in range(self._profile_max_iterations):
+            if dec.info.status not in [
+                "solved",
+                "maximum iterations reached",
+                "solved inaccurate",
+            ]:
+                break
+            control_signals = np.array(dec.x[-(self.MPC_horizon - 1) * self.nu :])
+            kappa_solution = control_signals[1::2]
+            new_profile = self._compute_speed_profile_from_kappas(
+                reference_path,
+                kappa_solution,
+                is_localised,
+                current_velocity,
+            )
+            if not np.all(new_profile.velocities > 0.0):
+                break
+            if (
+                np.abs(new_profile.velocities - reference_path.velocities).max()
+                < self._profile_convergence
+            ):
+                reference_path.velocities = new_profile.velocities
+                break
+            reference_path.velocities = new_profile.velocities
+            dec = self._solve_control(spatial_state, reference_path)
 
         if dec.info.status == "maximum iterations reached":
             message = "Maximum optimisation steps reached. Using suboptimal solution"
@@ -240,3 +264,38 @@ class SpatialMPC:
             )
             logger.warning(message)
             self.infeasibility_counter += 1
+
+    def _solve_control(self, spatial_state: np.array, reference_path: ReferencePath):
+        previous_controls = Controls(reference_path.velocities, reference_path.kappas)
+        try:
+            return self._control_solver.solve(
+                spatial_state,
+                reference_path,
+                previous_controls,
+            )
+        except Exception as e:
+            logger.warning(e)
+            return None
+
+    def _compute_speed_profile_from_kappas(
+        self,
+        reference_path: ReferencePath,
+        kappas: np.array,
+        is_localised: bool,
+        start_vel: Union[float, None],
+    ) -> ReferencePath:
+        temp_path = ReferencePath(len(kappas))
+        temp_path.distances = reference_path.distances
+        temp_path.kappas = kappas
+        return self.compute_speed_profile(
+            temp_path,
+            is_localised,
+            end_vel=self.speed_profile_constraints["end_velocity"],
+            start_vel=start_vel,
+        )
+
+
+class Controls:
+    def __init__(self, velocities: np.array, kappas: np.array):
+        self.kappas = kappas
+        self.velocities = velocities
