@@ -251,6 +251,7 @@ class ElTuarMPC(AssettoCorsaInterface):
         self.pose["steering_angle"] = obs["full_pose"]["SteeringRequest"]
         self.game_pose.pose = obs
         self.session_info.session_info = obs
+        self.controller.current_speed = self.pose["velocity"]
 
     def _maybe_add_observations_to_map(self, obs: Dict):
         elapsed_time_since_last_update = time.time() - self.last_update_time
@@ -331,6 +332,12 @@ class ElTuarMPC(AssettoCorsaInterface):
     def _maybe_record_localisation_data(self):
         if self.localiser and self._is_collecting_localisation_data:
             np.save(self._save_localisation_path, self._localisation_obs)
+
+    def restart_condition(self, observation: Dict) -> bool:
+        return False
+
+    def on_restart(self):
+        pass
 
     def setup(self):
         self._setup_localisation_benchmark_config()

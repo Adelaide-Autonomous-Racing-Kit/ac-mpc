@@ -14,20 +14,21 @@ import numpy as np
 
 def main():
     config = {
-        "horizon": 100,
+        "horizon": 50,
         "unlocalised_max_speed": 28,
         "speed_profile_constraints": {
-            "v_min": 12.0,
+            "v_min": 0.5,
             "v_max": 84.0,
-            "a_min": -1.0,
-            "a_max": 1.0,
-            "ay_max": 5.5,
+            "a_min": -12.0,
+            "a_max": 8.0,
+            "ay_max": 16.0,
             "ki_min": 0.005,
-            "end_velocity": 14.0,
+            "end_velocity": 20.0,
         },
-        "step_cost": [2.0e-3, 5.0e-2, 0.0],  # e_y, e_psi, t
-        "r_term": [1.0e-2, 10.0],  # velocity, steering
-        "final_cost": [1.0, 0.0, 0.1],  # e_y, e_psi, t
+        "step_cost": [10.0, 20.0, 1.0],  # e_y, e_psi, t
+        "r_term": [0.1, 10.0],  # velocity, steering
+        "s_term": [1.0e-1, 10000.0],  # velocity, steering
+        "final_cost": [10.0, 20.0, 1.0],  # e_y, e_psi, t
     }
     vehicle_data = SteeringGeometry("data/vehicles/audi_r8_lms_2016")
     mpc = build_mpc(config, vehicle_data)
@@ -37,7 +38,7 @@ def main():
     path_type = "hairpin"  # "hairpin", "curve", "chicane"
 
     # Experiment settings
-    colours = ["b", "c", "k", "g", "m", "y", "r"]
+    colours = ["b", "c", "k", "orange", "m", "y", "r"]
     show_example_by_example = False
     angle = 0.1
     experiments = 7
@@ -83,12 +84,12 @@ def main():
             ).T
 
             st = time.time()
-            mpc.get_control(test_reference_path, offset=0.0)
+            mpc.get_control(test_reference_path, offset=0.0, current_velocity=2.0)
             print(f"Time to solve get_control: {time.time() - st:.4f}")
 
             # print(controller.current_prediction)
             cum_dist = np.cumsum(mpc.reference_path.distances)
-            # print(mpc.current_control)
+            # print(mpc.cum_time)
 
             if show_example_by_example:
                 ax[0].clear()
@@ -112,9 +113,15 @@ def main():
             ax1[0].set_title("Velocity reference: green, Planned velocity: red, m/s")
             ax1[0].plot(mpc.projected_control[0], c=colours[i])
             ax1[0].plot(mpc.speed_profile, "--", c=colours[i])
-
             ax1[1].set_title("Steering command (rad)")
-            ax1[1].plot(mpc.projected_control[1], c=colours[i])
+            ax1[1].plot(
+                np.tan(mpc.projected_control[1]) / mpc.model.length, c=colours[i]
+            )
+            ax1[1].plot(
+                mpc.reference_path.kappas,
+                "--",
+                c=colours[i],
+            )
 
             ax[0].set_aspect(1)
 

@@ -6,14 +6,15 @@ import time
 from typing import Dict, List, Tuple
 
 from ace.steering import SteeringGeometry
-from aci.utils.system_monitor import SystemMonitor, track_runtime
+
+# from aci.utils.system_monitor import SystemMonitor, track_runtime
 from acmpc.control.commands import TemporalCommandSelector
 from acmpc.control.dynamics import SpatialBicycleModel
 from acmpc.control.spatial_mpc import SpatialMPC
 from acmpc.perception.shared_memory import SharedPoints
 import numpy as np
 
-Control_Monitor = SystemMonitor(300)
+# Control_Monitor = SystemMonitor(300)
 
 
 def build_mpc(control_config: Dict, vehicle_data: SteeringGeometry) -> SpatialMPC:
@@ -58,11 +59,19 @@ class Controller:
 
     @property
     def reference_speed(self) -> float:
-        return self.controller.reference_speed
+        return self._controller.reference_speed
 
     @reference_speed.setter
     def reference_speed(self, reference_speed: float):
         self._controller.reference_speed = reference_speed
+
+    @property
+    def current_speed(self) -> float:
+        return self._controller.current_speed
+
+    @reference_speed.setter
+    def current_speed(self, current_speed: float):
+        self._controller.current_speed = current_speed
 
     @property
     def is_localised(self) -> bool:
@@ -230,11 +239,13 @@ class ControlProcess(mp.Process):
                 self._update_control()
             # Control_Monitor.maybe_log_function_itterations_per_second()
 
-    @track_runtime(Control_Monitor)
+    # @track_runtime(Control_Monitor)
     def _update_control(self):
         self._update_reference_speed()
         self.model_predictive_controller.get_control(
-            self._reference_path, self.is_localised
+            self._reference_path,
+            self.is_localised,
+            current_velocity=self.current_speed,
         )
         self._update_shared_memory()
 
@@ -252,6 +263,17 @@ class ControlProcess(mp.Process):
     def reference_speed(self, reference_speed: float):
         with self._shared_reference_speed.get_lock():
             self._shared_reference_speed.value = reference_speed
+
+    @property
+    def current_speed(self) -> float:
+        with self._shared_current_speed.get_lock():
+            current_speed = self._shared_current_speed.value
+        return current_speed
+
+    @current_speed.setter
+    def current_speed(self, current_speed: float):
+        with self._shared_current_speed.get_lock():
+            self._shared_current_speed.value = current_speed
 
     @property
     def _reference_path(self) -> np.array:
@@ -309,3 +331,4 @@ class ControlProcess(mp.Process):
         self._is_localised = mp.Value("i", False)
         self._shared_update_timestamp = mp.Value("d", 0.0)
         self._shared_reference_speed = mp.Value("d", 0.0)
+        self._shared_current_speed = mp.Value("d", 0.0)

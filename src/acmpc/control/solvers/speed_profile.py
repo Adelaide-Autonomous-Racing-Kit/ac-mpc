@@ -16,8 +16,9 @@ class SpeedProfileSolver:
         self,
         reference_path: ReferencePath,
         end_velocity: Union[float, None] = None,
+        start_velocity: Union[float, None] = None,
     ):
-        self._update_velocity_bounds(reference_path, end_velocity)
+        self._update_velocity_bounds(reference_path, end_velocity, start_velocity)
         self._update_problem_bounds()
         self._update_inequalities(reference_path)
         self._update_costs()
@@ -27,20 +28,30 @@ class SpeedProfileSolver:
         self,
         reference_path: ReferencePath,
         end_velocity: Union[float, None] = None,
+        start_velocity: Union[float, None] = None,
     ):
         max_ay = self._max_lateral_acceleration
         # Create matrices
-        v_max = np.ones(self._n_horizon) * self._max_velocity
+        v_max = np.ones(self._n_horizon) * (self._max_velocity**2)
         # Dynamic v_max bases on path curvature
         is_bellow_minimum_kappa = np.abs(reference_path.kappas) < self._min_kappa
-        v_max_dyn = np.sqrt(max_ay / (np.abs(reference_path.kappas) + self._eps))
-        v_max_dyn[is_bellow_minimum_kappa] = self._max_velocity
+        v_max_dyn = max_ay / (np.abs(reference_path.kappas) + self._eps)
+        v_max_dyn[is_bellow_minimum_kappa] = self._max_velocity**2
         v_mins = np.min([v_max_dyn, v_max], axis=0)
         v_maxs = np.max([self._min_velocities, v_mins], axis=0)
-        v_max = v_maxs + 2e0
+        ay_slack = self._constraints.get("ay_slack", 2.0)
+        v_max = v_maxs + ay_slack
         # Final velocity
         if end_velocity is not None:
-            v_max[-1] = end_velocity
+            v_max[-1] = end_velocity**2
+        if start_velocity is not None:
+            # Enforces that the initial velocity in the reference path is
+            #   the vehicle's current velocity
+            if start_velocity < 0.1:
+                start_velocity = 0.1
+            v_mins = np.ones(self._n_horizon) * start_velocity**2
+            v_max[0] = min(start_velocity**2, v_max[0])
+            self._min_velocities = np.min([self._min_velocities, v_mins], axis=0)
         # Update
         self._max_velocities = v_max
 
@@ -48,7 +59,7 @@ class SpeedProfileSolver:
         self._lower_bounds = np.hstack([self._min_accelerations, self._min_velocities])
         self._upper_bounds = np.hstack([self._max_accelerations, self._max_velocities])
 
-    def _update_inequalities(self, reference_path: ReferncePath):
+    def _update_inequalities(self, reference_path: ReferencePath):
         distances = reference_path.distances
         D1_diagonal = np.array([-1 / (2 * distances[:-1]), 1 / (2 * distances[:-1])])
         shape = [self._n_horizon - 1, self._n_horizon]
@@ -123,7 +134,7 @@ class SpeedProfileSolver:
     def _allocate_static_matrices(self):
         self._D2 = sparse.eye(self._n_horizon)
         self._P = sparse.eye(self._n_horizon, format="csc")
-        self._min_velocities = np.ones(self._n_horizon) * self._min_velocity
+        self._min_velocities = np.ones(self._n_horizon) * (self._min_velocity**2)
         self._min_accelerations = np.ones(self._n_horizon - 1) * self._min_acceleration
         self._max_accelerations = np.ones(self._n_horizon - 1) * self._max_acceleration
 
@@ -133,18 +144,18 @@ class LocalisedSpeedProfileSolver(SpeedProfileSolver):
         self,
         reference_path: ReferencePath,
         end_velocity: Union[float, None] = None,
+        start_velocity: Union[float, None] = None,
     ):
-        self._max_velocities = np.ones(self._n_horizon) * self._max_velocity
+        v_max = np.ones(self._n_horizon) * (self._max_velocity**2)
+        if start_velocity is not None:
+            # Enforces that the initial velocity in the reference path is
+            #   the vehicle's current velocity
+            if start_velocity < 0.1:
+                start_velocity = 0.1
+            v_mins = np.ones(self._n_horizon) * start_velocity**2
+            v_max[0] = min(start_velocity**2, v_max[0])
+            self._min_velocities = np.min([self._min_velocities, v_mins], axis=0)
+        self._max_velocities = v_max
 
     def _update_problem_bounds(self):
-        self._upper_bounds = np.hstack([self._max_accelerations, self._max_velocities])
-
-    def _update_costs(self):
-        self._q = -1 * self._max_velocities
-
-    def _update_QP_problem(self):
-        self._problem.update(Ax=self._A.data, q=self._q, u=self._upper_bounds)
-
-    def _allocate_static_matrices(self):
-        super()._allocate_static_matrices()
-        self._lower_bounds = np.hstack([self._min_accelerations, self._min_velocities])
+        super()._update_problem_bounds()

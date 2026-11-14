@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ac-mpc"
+version = "1.0"
+description = "Autonomous racing challenge MPC agent for Assetto Corsa"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy>=1.14",
+    "osqp",
+    "ruamel.yaml",
+    "loguru",
+    "matplotlib",
+    "simple-pid",
+    "pyconcorde @ git+https://github.com/jvkersch/pyconcorde",
+    "assetto-corsa-state @ git+https://github.com/Adelaide-Autonomous-Racing-Challenge/ac-state.git",
+    "assetto-corsa-extras @ git+https://github.com/Adelaide-Autonomous-Racing-Challenge/ac-extras.git",
+]
+
+[project.optional-dependencies]
+# Full car runtime (Assetto Corsa interface, perception model, dashboard GUI)
+full = [
+    "assetto-corsa-interface @ git+https://github.com/Adelaide-Autonomous-Racing-Challenge/ac-interface.git",
+    "segmentation-models-pytorch",
+    "PyQt6",
+]
+
+[dependency-groups]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+    "pre-commit",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/acmpc"]
